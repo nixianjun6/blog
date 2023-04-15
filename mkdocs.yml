@@ -3,4 +3,4 @@ nav:
 -Home: index.md
 -Database: database.md
 theme:
-  name: 'material'
+  name: 'dracula'
