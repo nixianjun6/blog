@@ -1,6 +1,6 @@
 site_name: nixianjun6's wiki
 nav:
-  -Home: index.md
-  -Database: database.md
+-Home: index.md
+-Database: database.md
 theme:
   name: 'material'
