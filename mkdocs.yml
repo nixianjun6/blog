@@ -4,3 +4,5 @@ nav:
 -Database: database.md
 theme:
   name: 'dracula'
+  logo: assets/img/nixianjun6.png
+  favicon: assets/img/favicon.ico
