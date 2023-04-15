@@ -4,5 +4,3 @@ nav:
 -Database: database.md
 theme:
   name: 'dracula'
-  logo: https://github.com/nixianjun6/blog/tree/master/site/images/nixianjun6.png
-  favicon: https://github.com/nixianjun6/blog/tree/master/site/images/favicon.ico
