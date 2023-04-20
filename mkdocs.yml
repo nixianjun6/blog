@@ -1,8 +1,8 @@
 site_name: nixianjun6
 nav:
--Home: index.md
--Database: database.md
+- Home: index.md
+- Database: 'database.md'
 theme:
   name: 'dracula'
-  logo: docs/img/dracula.png
-  favicon: docs/img/favicon.ico
+  logo: img/nixianjun.png
+  favicon: img/favicon.ico
