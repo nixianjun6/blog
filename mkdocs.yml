@@ -1,7 +1,8 @@
 site_name: nixianjun6
 nav:
 - Home: index.md
-- Database: 'database.md'
+- Database:
+  - cmu15445: 'database/cmu15445.md'
 theme:
   name: 'dracula'
   logo: img/nixianjun.png
