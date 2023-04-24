@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-        <title>Database - nixianjun6</title>
+        <title>cmu15445 - nixianjun6</title>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,12 +12,12 @@
         
 
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
-        <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
-        <link rel="stylesheet" href="../assets/css/dracula-ui.css">
-        <link rel="stylesheet" href="../assets/css/mkdocs.css">
+        <link rel="stylesheet" href="../../assets/css/bootstrap.min.css">
+        <link rel="stylesheet" href="../../assets/css/dracula-ui.css">
+        <link rel="stylesheet" href="../../assets/css/mkdocs.css">
 
         
-            <link  rel="icon" type="image/x-icon" href="../img/favicon.ico">
+            <link  rel="icon" type="image/x-icon" href="../../img/favicon.ico">
         
             <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
                 <script>hljs.initHighlightingOnLoad();</script>
@@ -39,7 +39,7 @@
 
     <div class="p-4">
         
-            <img class="logo" src="../img/nixianjun.png" height="150px">
+            <img class="logo" src="../../img/nixianjun.png" height="150px">
         
 
         <div class="drac-text-center">
@@ -66,18 +66,31 @@
         <ul class="mb-5 drac-list drac-list-none">
             
             <li class="drac-box">
-                <a href=".."
+                <a href="../.."
                     class="
                     drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
                     Home
                 </a>
             </li>
             <li class="drac-box">
-                <a href="./"
+                <a href="../.."
                     class=" active 
-                    drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
+                    drac-anchor btn-toggle d-inline-flex align-items-center border-0 drac-text-purple--hover collapsed"
+                    data-bs-toggle="collapse" data-bs-target="#database-collapse" aria-expanded="false">
                     Database
                 </a>
+                <div class="collapse" id="database-collapse">
+                    <ul class="mb-5 drac-list drac-list-none">
+                            
+    <li class="drac-box-ternary">
+        <a href="./"
+            class=" active 
+            drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
+            cmu15445
+        </a>
+    </li>
+                    </ul>
+                </div>
             </li>
         </ul>
         <!-- endblock -->
@@ -107,7 +120,7 @@
         <div class="container">
             <div class="row row-preview">
                 <div class="col">
-                    <a href=".."
+                    <a href="../.."
                         class="btn-preview drac-btn drac-btn-outline drac-text-white drac-text-cyan-green--hover">
                         <i class="fa fa-arrow-left"></i> Previous
                     </a>
@@ -125,7 +138,7 @@
 
                     <!-- block search -->
                     <li class="nav-item"><div role="search" class="search-box">
-	<form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+	<form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
 		<input type="text" name="q" class="drac-input drac-input-search drac-input-white drac-text-white drac-bg-black-secondary"
 		placeholder="Search docs" title="Type search term here" />
 	</form>
@@ -150,7 +163,45 @@
             <!-- block content -->
                 <section class="p-md-5 section-content">
     <article>
-        <p></p>
+        <p><h1 id="cmu15445">CMU15445</h1>
+<p>关系型数据库: </p>
+<ul>
+<li>使用简单的数据结构（关系）存储数据</li>
+<li>DBMS实现物理存储</li>
+<li>通过高级语言获得数据，DBMS决定最佳的执行策略</li>
+</ul>
+<h2 id="_1">数据库存储：</h2>
+<p>​   DBMS假定主要存储在Disk上。因为磁盘是非易失的，并且成本较低且存储空间较大。</p>
+<p><img alt="存储结构" src="../../img/%E5%AD%98%E5%82%A8%E7%BB%93%E6%9E%84.png" /></p>
+<p>​   由此产生的问题：磁盘上的访存速度非常慢，且随机访问的速率远小于顺序访问。</p>
+<p>​   因此，DBMS需要解决以下问题：</p>
+<ul>
+<li><strong>允许DBMS管理比实际内存更大的空间</strong></li>
+<li><strong>减少磁盘的读写</strong></li>
+<li><strong>最大化顺序访问磁盘</strong></li>
+</ul>
+<p>​   相关工作：</p>
+<ul>
+<li>mmap：<a href="https://db.cs.cmu.edu/papers/2022/cidr2022-p13-crotty.pdf">Why not mmap</a></li>
+</ul>
+<hr />
+<p>​   同时，数据库往往会以多个文件的形式存储在磁盘上，一般我们通过一个页面的集合去管理这些文件。页面是固定大小的数据块，硬件页面是存储设备可以保证故障安全写入的最大数据块。由此我们会有以下问题：</p>
+<ul>
+<li><strong>如何确定页面的大小？</strong></li>
+<li><strong>对不同文件如何进行页面管理？（Heap, Tree, ISAM, Hashing）</strong></li>
+</ul>
+<p>​   这门课中主要介绍了堆文件管理方式。堆文件是一些页面的无序集合。因此需要原数据跟踪文件中包含哪些页面以及哪些页面是空闲的。堆文件通过一个特殊的页面（页目录）跟踪数据页面的位置以及空闲的空间。</p>
+<p>​   页面存储数据的方式：存储元组；存储日志</p>
+<p><center>
+    <img alt="slotted_pages" src="../../img/slotted_pages.png" />
+    <br>
+    <div>slotted page</div>
+</center></p>
+<p>​   元组：按列顺序存储数据，去规范化。可以优化的点：</p>
+<ul>
+<li><strong>按什么顺序存储数据？</strong></li>
+<li><strong>trade off: 去规范化（比如两个表有个外键关联，把两张表的元组存储在一起）。这样可能可以减少I/O的总量，但是会增加修改的成本。</strong></li>
+</ul></p>
     </article>
 </section>
             <!-- endblock -->
@@ -169,11 +220,11 @@
 
     </main>
 
-        <script>var base_url = '..';</script>
-        <script src="../assets/js/jquery-3.3.1.slim.min.js""></script>
-        <script src="../assets/js/bootstrap.bundle.min.js""></script>
-        <script src="../assets/js/mkdocs.js""></script>
-			<script src="../search/main.js" defer></script>
+        <script>var base_url = '../..';</script>
+        <script src="../../assets/js/jquery-3.3.1.slim.min.js""></script>
+        <script src="../../assets/js/bootstrap.bundle.min.js""></script>
+        <script src="../../assets/js/mkdocs.js""></script>
+			<script src="../../search/main.js" defer></script>
 
 </body>
 
