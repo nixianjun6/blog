@@ -164,6 +164,9 @@
                 <section class="p-md-5 section-content">
     <article>
         <p><h1 id="cmu15445">CMU15445</h1>
+<p><strong>声明：以下内容均为个人学习使用，不做任何商业用途。文字和图片来源于<a href="https://15445.courses.cs.cmu.edu/fall2022/schedule.html">cmu15445</a></strong>。</p>
+<p><strong>Disclaimer: The following content is for personal learning use, not for any commercial use. Text and pictures are from <a href="https://15445.courses.cs.cmu.edu/fall2022/schedule.html">cmu15445</a></strong>.</p>
+<hr />
 <p>关系型数据库: </p>
 <ul>
 <li>使用简单的数据结构（关系）存储数据</li>
@@ -229,10 +232,89 @@
 <hr />
 <p>​   数据：这一部分的问题包括：</p>
 <ul>
-<li>任意精度的小数：<a href="https://github.com/cmu-db/libfixeypointy">libfixeypointy</a></li>
-<li>大数值：overflow page(额外的页面存溢出数据), <a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2006/04/tr-2006-45.pdf">external file</a>（专门存储大数值的文件，这个文件没有持久性和事务保护）</li>
+<li><strong>任意精度的小数：<a href="https://github.com/cmu-db/libfixeypointy">libfixeypointy</a></strong></li>
+<li><strong>大数值：overflow page(额外的页面存溢出数据), <a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2006/04/tr-2006-45.pdf">external file</a>（专门存储大数值的文件，这个文件没有持久性和事务保护）</strong></li>
 </ul>
-<hr /></p>
+<hr />
+<p>​   数据库负载：</p>
+<ul>
+<li>OLTP：读写小量数据</li>
+<li>OLAP：读大量数据进行聚合计算</li>
+<li>HTAP：OLTP + OLAP together</li>
+</ul>
+<p>​   根据不同的数据库负载类型我们可以对页面存储数据方式进行优化，比如对于OLAP我们可以采用DSM的方式，即将跨元组的单属性值连续存储在页面中（这样可以减少I/O的访存量，可以更好的进行查询和数据压缩，但同时对单点操作不利，因为一个tuple的不同属性分布在不同页上）。</p>
+<hr />
+<p>​   数据库压缩：由于在现实世界中数据集在某个属性上的值往往具有高度偏斜性，同时同一元组之间的不同属性之间往往也具有高度的相关性。因此我们可以基于这些特点对数据库进行压缩。数据库的压缩必须保证压缩后的值是定长的（Why?），查询执行时必须尽可能推迟解压缩，必须是无损的。数据库压缩你需要考虑以下问题：</p>
+<ul>
+<li><strong>计算开销</strong></li>
+<li><strong>压缩与解压缩的速度</strong></li>
+</ul>
+<p>​   重点介绍一下对DSM方式存储的数据进行压缩。可行的方案包括：</p>
+<ul>
+<li>run-length encoding(对数据的排序具有要求)：</li>
+</ul>
+<p><center>
+    <img alt="run-length encoding" src="../../img/run-length_encoding.png" />
+    <br>
+    <div>run-length encoding</div>
+</center></p>
+<ul>
+<li>bit-packing encoding</li>
+</ul>
+<p><center>
+    <img alt="bit-packing encoding" src="../../img/bit-packing_encoding.png" />
+    <br>
+    <div>bit-packing encoding</div>
+</center></p>
+<ul>
+<li>mostly encoding(对bit-packing的进一步优化)</li>
+</ul>
+<p><center>
+    <img alt="mostly encoding" src="../../img/mostly_encoding.png" />
+    <br>
+    <div>mostly encoding</div>
+</center></p>
+<ul>
+<li>bitmap encoding(低基类类别变量，类似于One-hot)</li>
+</ul>
+<p><center>
+    <img alt="bitmap encoding" src="../../img/bitmap_encoding.png" />
+    <br>
+    <div>bitmap encoding</div>
+</center></p>
+<ul>
+<li>delta encoding(可结合RLE，对数据平稳性有要求)</li>
+</ul>
+<p><center>
+    <img alt="delta encoding" src="../../img/delta_encoding.png" />
+    <br>
+    <div>delta encoding</div>
+</center></p>
+<ul>
+<li>
+<p>incremental encoding(类似于上一个，但是这个是针对字符串的，所以取公共前缀作为基底)</p>
+</li>
+<li>
+<p>dictionary compression(需要注意dictionary的大小，没有magic hash function可以同时做到编码和解码，Andy认为这一方法可能是最有效的方法，因为不需要预排序)</p>
+</li>
+</ul>
+<p><center>
+    <img alt="dictionary compression" src="../../img/dictionary_compression.png" />
+    <br>
+    <div>dictionary compression</div>
+</center></p>
+<hr />
+<p>​   之前我们了解了数据库在磁盘上的存储，进一步我们需要解决磁盘和内存之间的来回移动问题。我们需要解决以下问题：</p>
+<ul>
+<li><strong>数据应该写到磁盘的哪些页上（我们应该尽可能让经常使用的页尽可能的靠近）</strong></li>
+<li><strong>什么时候需要把页面读入内存，什么时候需要把页面写回磁盘（我们应该尽可能减少I/O访存的次数）</strong></li>
+</ul>
+<p><center>
+<img alt="buffer pool" src="../../img/buffer_pool.jpg" />
+<br></p>
+<div>buffer pool</div>
+<p></center></p>
+<p>source from <a href="https://zhuanlan.zhihu.com/p/571927310">eleven's zhihu</a></p></p>
     </article>
 </section>
             <!-- endblock -->
