@@ -306,15 +306,174 @@
 <hr />
 <p>​   之前我们了解了数据库在磁盘上的存储，进一步我们需要解决磁盘和内存之间的来回移动问题。我们需要解决以下问题：</p>
 <ul>
-<li><strong>数据应该写到磁盘的哪些页上（我们应该尽可能让经常使用的页尽可能的靠近）</strong></li>
+<li><strong>页面应该写到磁盘的哪里（我们应该尽可能让经常使用的页尽可能的靠近）</strong></li>
 <li><strong>什么时候需要把页面读入内存，什么时候需要把页面写回磁盘（我们应该尽可能减少I/O访存的次数）</strong></li>
+</ul>
+<p>Why not page cache:</p>
+<ul>
+<li>多余的页面副本</li>
+<li>不同的替换策略</li>
+<li>DBMS失去了对文件I/O的控制</li>
 </ul>
 <p><center>
 <img alt="buffer pool" src="../../img/buffer_pool.jpg" />
 <br></p>
 <div>buffer pool</div>
 <p></center></p>
-<p>source from <a href="https://zhuanlan.zhihu.com/p/571927310">eleven's zhihu</a></p></p>
+<p>source from <a href="https://zhuanlan.zhihu.com/p/571927310">eleven's zhihu</a></p>
+<p>​   缓存池大致的运行过程如上图所示，在实验中我们的page table的底层实现是extendible hash table，用来得到页号和页框号的映射关系。当缓存池满并且需要调取新的页面到内存时，需要合适的替换策略。在实验中，我们采用的LRU-K算法。这里我们分析一下各替换策略：</p>
+<ul>
+<li>LRU：给每个页面维护一个单独的时间戳，选取最老的时间戳进行驱逐。</li>
+<li>CLOCK：每个页面有个参考位，如果页面被访问则置为1。如果需要驱逐页面，则从当前位置开始，如果参考位为1，则置为0，否则驱逐。</li>
+</ul>
+<p>​   <strong>缺点：在某些工作负载中，最近使用的页面是最不需要的页面</strong></p>
+<ul>
+<li>LRU-K：记录page最近k次引用的时间，如果有小于k次的，则驱逐这些小于k次的页面中时间戳最老的。否则驱逐所有页面中最老的。</li>
+<li>localization：给查询单独一个缓冲池</li>
+<li>priority hints：</li>
+</ul>
+<p>​   页面替换过程中还需要考虑脏页，因为脏页还需要写回到磁盘中去。</p>
+<p>​   缓存池的一些优化方案：</p>
+<ul>
+<li>多缓冲池</li>
+<li>根据查询计划，预取</li>
+<li>扫描共享（不一定是一个有价值的功能，因为两个事务很难看到同样的结果，more details see <a href="https://stackoverflow.com/questions/62185855/shared-scanning-in-postgres">here</a>）</li>
+<li><a href="https://www.ibm.com/docs/en/informix-servers/12.10?topic=io-light-scans">轻扫描</a>，即顺序查询算子不将结果存储在缓存池中。</li>
+</ul>
+<hr />
+<h2 id="_2">获取方式</h2>
+<p>​   接下来，我们将讨论DBMS如何从一个页面中获取到他们想要的数据。</p>
+<p>​   Hash Table：时间复杂度最优秀的单点查询，平均时间复杂度为O(1)，最坏情况下为O(n)。需要考虑的设计有：</p>
+<ul>
+<li><strong><a href="https://github.com/rurban/smhasher">哈希函数</a>（需要权衡计算花费和冲突率）</strong></li>
+<li><strong>处理哈希冲突（需要权衡分配一个大的哈希表和额外的空间去存取key）</strong></li>
+</ul>
+<p>​   我们主要考虑第二个问题。对于分配一个大的哈希表的有以下几种解决方案：</p>
+<ul>
+<li>
+<p>linear probe hashing(插入时，如果发生冲突，则往后面找到第一个空位插入。删除时，立一块墓碑，方便之前插入时有冲突的其他key的查询)</p>
+</li>
+<li>
+<p>robin hood hashing(插入时，如果发生冲突，则冲突次数低的让位冲突次数高的，让冲突次数低的再去线性探查新的位置)</p>
+</li>
+<li>
+<p>cuckoo hashing（插入时，用两个哈希函数和哈希表，如果在第一张表发生冲突，则尝试插入第二张表，如果第二张表依然发生冲突，则抢占该位置的元素，让该位置元素尝试插入第一张表，如果依然发生冲突，则抢占第一张表该位置的元素，让第一张表该位置的元素尝试插入第二张表。）</p>
+</li>
+</ul>
+<p>​   使用额外的空间去存取key有以下几种方案：</p>
+<ul>
+<li>
+<p>chained hashing：每个slot维护一个链表，发生冲突时插入到链表中</p>
+</li>
+<li>
+<p>extendible hashing：发生冲突时桶分裂，然后重新构造这类产生冲突的key的哈希函数（映射二进制下后x位-&gt;二进制下后(x+1)位），并将桶分裂前的数据和本次插入的数据重新哈希进分裂后的桶中。</p>
+</li>
+<li>
+<p>linear hashing</p>
+</li>
+</ul>
+<p>​   B+Tree：建立索引可以实现表的高效访问，DBMS需要识别出每次执行的最佳索引，但是索引也会带来额外的空间开销和维护开销。你在设计一个B+树时，需要考虑以下方面：</p>
+<ul>
+<li><strong>节点大小：依赖于存储设备和工作负载</strong></li>
+<li><strong>延迟合并节点/小节点存活，定期重构</strong></li>
+<li><strong>不定长的key(指针；填充；key map；认真维护)</strong></li>
+</ul>
+<p>​   B+树的优化策略：</p>
+<ul>
+<li>对key进行压缩</li>
+<li>批处理插入</li>
+</ul>
+<p>​   B+树的并发控制：采用读写锁（可以共享读）。B+树采用latch crabbing，即从根节点往下遍历时不会立刻释放锁，而是当确定孩子节点是安全时（对于读操作，始终是安全。对于插入操作，不可能发生分裂的节点是安全的。对于删除操作，不可能被合并的节点是安全的），才会释放锁。B+树的并发还有一些细节和优化：</p>
+<ul>
+<li>
+<p>需要为root page加锁，因为root_page_id的访问需要被锁保护</p>
+</li>
+<li>
+<p>删除时需要对兄弟节点加锁，原因是因为当一个安全的子节点先发生删除而它的兄弟节点后发生不安全的删除时，可能不安全的兄弟节点会先发生合并。同时，给兄弟节点加锁是不会导致死锁的，因为同一个父节点下不可能有两个子节点发生不安全的删除。</p>
+</li>
+<li>
+<p>乐观锁：由于每次写操作都会对根节点上写锁，但实际上大部分的写操作都不会导致根节点的变化，因此我们可以考虑乐观锁。即在向下加锁的过程中一直加读锁，最后给叶子节点加写锁即可。如果发现叶子节点是不安全的，释放所有乐观锁，重新加入悲观锁。</p>
+</li>
+</ul>
+<hr />
+<h2 id="_3">算子执行</h2>
+<p><center>
+<img alt="project structure" src="../../img/project-structure.svg" />
+<br></p>
+<div>project structure</div>
+<p></center></p>
+<p>​   一条sql语句，首先经过Parser生成AST。然后通过Binder将树的节点和数据库的实体进行绑定。之后Planner会遍历树，生成初步的查询计划。这些查询计划会交给Optimizer进行修改优化。在拿到真正的执行查询计划之后，遍历查询计划树，将树上的PlanNode替换为对应的Executor，由Executor执行具体的算子。</p>
+<p><center>
+<img alt="how executor get data" src="../../img/excutor_get_data.jpg" />
+<br></p>
+<div>How Executor Get Data</div>
+<p></center></p>
+<p>source from <a href="https://zhuanlan.zhihu.com/p/587566135">eleven's zhihu</a></p>
+<p>​   Executor拿到一个Tuple的数据的过程如上图所示（除此之外，Catalog中还有index info，可以进行索引的查询）。接下来我们按照Andy的教课顺序，首先从具体的算子实现说起。</p>
+<hr />
+<p>​   排序:</p>
+<ul>
+<li>TOP-N优化: 比如一条SQL有Order by和Limit，这时可以通过heapsort进行优化。</li>
+<li>External merge sort: 需要排序的数据超出内存。</li>
+<li>比较优化:进行比较的硬编码/字符串比较二进制前缀而不是字符前缀</li>
+<li>B+树</li>
+</ul>
+<p>​   聚合:</p>
+<ul>
+<li>排序聚合:先排序再聚合</li>
+<li>哈希聚合:先通过hash函数h1将所有的元组在磁盘上进行分区，相同哈希值的在一个分区中。对于磁盘上的每个分区读入内存并通过hash函数h2进行聚合。</li>
+</ul>
+<p>​   Join:</p>
+<ul>
+<li>
+<p>Nested loop join: R×S, simple nested loop join会对R中的每一个tuple都需要取一次S表的所有pages。一个简单的优化Blocked nested loop join是对于R中同一page的tuple我们取一次S表的所有pages。到这里我们发现基本的Nested loop join之所以慢是因为对于每一次匹配都需要顺序扫描一遍S表。所以我们可以使用索引进行优化S表的顺序扫描。</p>
+</li>
+<li>
+<p>Sort-Merge join:当其中一个表已经排好序或者输出必须有顺序时可以使用。</p>
+</li>
+<li>
+<p>Hash join:先用外表建立hash table, 然后扫描一遍S检查是否匹配。可以在第一个阶段建立bloom filter加速，因为bloom filter和cpu caches更适配。bloom filter维护一个bitmap，插入时会通过k个哈希函数，将这些位的值置为1，查找时判断这些位是否都为1。bloom filter会出现假阳性的情况，但是不可能出现假阴性，也就是说对key不在这个集合中的判断是准确的。</p>
+</li>
+</ul>
+<hr />
+<p>​   事实上，Executor之间是有数据移动的。因此我们需要权衡应该用什么样的处理模型去适配我们数据库的工作负载。</p>
+<ul>
+<li>
+<p>火山模型: 每个算子都有Init()和Next()两个方法。分别进行初始化工作以及向下层算子请求下一条数据。当Next()放回salse的时候，迭代结束。占用内存小，函数调用开销大，容易造成cache miss等问题。</p>
+</li>
+<li>
+<p>Materialization Model: 所有算子立即计算出所有结果并返回。内存占用高，减少了函数调用的开销。</p>
+</li>
+<li>
+<p>Vectorization Model: 一次调用Next()返回一批数据。利于SIMD加速。</p>
+</li>
+</ul>
+<p>​   执行的方向:</p>
+<ul>
+<li>Top-to-Bottom:从上往下Pull数据</li>
+<li>Bottom-to-Top:从下往上Push数据</li>
+</ul>
+<hr />
+<p>​   查询优化：略了，还不太懂</p>
+<hr />
+<h2 id="_4">并发控制</h2>
+<p>​   事务的四大特性:</p>
+<ul>
+<li>原子性: 事务要么执行完所有sql语句然后Commit要么一条都不执行然后Abort。(一般通过Logging的方式实现)</li>
+<li>一致性: 数据库总是逻辑正确的，在事务发生前后数据库都保持一致性。</li>
+<li>隔离性: 事务之间是不可见的。(通过并发控制实现)</li>
+<li>持久性：</li>
+</ul>
+<p>​   Serializable Schedule: 如果事务的按照一定的执行顺序得到的结果和事务串行得到的结果一致，我们就说这个执行顺序是serializable的。</p>
+<p>​   如何判断一个执行顺序是serializable的:</p>
+<ul>
+<li>conflict serializable schedules: 构建冲突依赖图，如果没有环就说明是serializable的。</li>
+<li>view serializable: 根据经验加入规则判断是否是serializable的</li>
+</ul>
+<hr />
+<p>​   二阶段锁:</p>
+<p>​   事务运行之后首先进入第一个阶段: Growing阶段。在这个阶段事务只能请求加锁而不能释放锁。第二阶段为Shrinking阶段，在这一阶段事务只能释放锁，而不能加锁。(可以用反证法证明，这样一定是conflict serializable的。主要思路是：如果不是CSR，那么就一定有环。如果一个事务出度大于0，那么这个事务一定进入了Shrinking阶段，而一个事务入度大于0他一定获得了某个对象的锁，矛盾)</p>
+<p>​   尽管二阶段锁一定能保证CSR，但是它会导致cascding aborts。比如，事务T1对A对象进行了写操作，之后释放了锁，然后T2对A对象进行了一系列操作，最后T1 Abort了，就会导致错误。</p></p>
     </article>
 </section>
             <!-- endblock -->
