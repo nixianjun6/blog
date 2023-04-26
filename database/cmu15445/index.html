@@ -473,7 +473,20 @@
 <hr />
 <p>​   二阶段锁:</p>
 <p>​   事务运行之后首先进入第一个阶段: Growing阶段。在这个阶段事务只能请求加锁而不能释放锁。第二阶段为Shrinking阶段，在这一阶段事务只能释放锁，而不能加锁。(可以用反证法证明，这样一定是conflict serializable的。主要思路是：如果不是CSR，那么就一定有环。如果一个事务出度大于0，那么这个事务一定进入了Shrinking阶段，而一个事务入度大于0他一定获得了某个对象的锁，矛盾)</p>
-<p>​   尽管二阶段锁一定能保证CSR，但是它会导致cascding aborts。比如，事务T1对A对象进行了写操作，之后释放了锁，然后T2对A对象进行了一系列操作，最后T1 Abort了，就会导致错误。</p></p>
+<p>​   尽管二阶段锁一定能保证CSR，但是它会导致cascding aborts。比如，事务T1对A对象进行了写操作，之后释放了锁，然后T2对A对象进行了一系列操作，最后T1 Abort了，就会导致错误。</p>
+<p>​   严格二阶段锁:在事务的最后把所有的锁一起释放。这样可以解决级联回滚的问题。但是仍然有可能导致死锁。因此需要进行死锁检测/预防。</p>
+<hr />
+<p>​   锁的粒度:</p>
+<p>​   意向锁:允许上级节点在共享或排他模式下被锁定，而不需要检查所有的下级节点。</p>
+<hr />
+<p>​   隔离级别:</p>
+<p><center>
+<img alt="isolation levels" src="../../img/isolation_levels.png" />
+<br></p>
+<div>isolation levels</div>
+<p></center></p>
+<hr />
+<p>​   并发控制部分T/O, OCC, MVCC, 恢复部分Logging, Recovery, 分布式数据库略 </p></p>
     </article>
 </section>
             <!-- endblock -->
