@@ -3,6 +3,7 @@ nav:
 - Home: index.md
 - Database:
   - cmu15445: 'database/cmu15445.md'
+  - leveldb: 'database/leveldb.md'
 theme:
   name: 'dracula'
   logo: img/nixianjun.png
