@@ -172,6 +172,11 @@
                 <section class="p-md-5 section-content">
     <article>
         <p><h1 id="leveldb">leveldb</h1>
+<p>​   在阅读源码之前，我们应该去关注以下问题:</p>
+<ul>
+<li>为什么会有NoSQL数据库的出现, 这样的数据库解决了关系型数据库哪方面的不足</li>
+</ul>
+<hr />
 <p><a href="https://github.com/google/leveldb">source code</a></p>
 <p><a href="https://zhuanlan.zhihu.com/p/558559654">build &amp;&amp; simple use in windows 11</a></p>
 <hr />
@@ -192,7 +197,29 @@
 </ul>
 <hr />
 <h2 id="test-features">Test Features:</h2>
-<p>my test code is <a href="https://github.com/nixianjun6/leveldb_test">here</a>.</p></p>
+<p>my test code is <a href="https://github.com/nixianjun6/leveldb_test">here</a>.</p>
+<hr />
+<h2 id="data-structure">Data Structure:</h2>
+<p>​   <strong>Slice</strong>: 由于string类在返回时，会进行一个拷贝操作，而Slice则只需要返回长度和指针，这样保证了对于任意字节数组的键值都有较好的性能。除此之外，Slice不以'\0'作为字符的终止符，可以存储值为'\0'的数据。</p>
+<p>​   <strong>Comparator:</strong> 纯虚类，用于用户自定义比较函数。主要需要实现四个接口比较函数，比较器的名字，以及用于两个压缩字符串存储空间的方法: FindShortestSeparator,  FindShortSuccessor。思考:</p>
+<ul>
+<li>为什么比较器需要实现两个用于压缩字符串的方法?</li>
+<li>这两个方法的使用场景有什么区别?</li>
+</ul>
+<hr />
+<h2 id="code-reading">Code Reading:</h2>
+<p>​   首先，我们一起阅读数据库的读写部分。</p>
+<p><center>
+  <img alt="leveldb read and write" src="../../img/leveldb_read_write.png" />
+  <br>
+    <div>How Leveldb read &amp;&amp; write</div>
+</center></p>
+<p>​   读操作: 首先会进行上锁，并读出mem_, imm_, versions-&gt;current()。然后进行解锁，并依次在mem_, imm_, current中根据look up key进行查找。找到之后进行上锁，如果是从current中找到的，并且current更新了状态，会触发一个可能的压缩操作。之后，维护mem_, imm_, current的引用计数，并返回值。读这段代码我有三个问题:</p>
+<ul>
+<li>mutex_控制的是线程间什么样的并发过程?</li>
+<li>mem_, imm_, current分别是什么?</li>
+<li>这里的状态更新是什么，为什么会触发一个可能的压缩操作?</li>
+</ul></p>
     </article>
 </section>
             <!-- endblock -->
