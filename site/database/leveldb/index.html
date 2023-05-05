@@ -206,6 +206,26 @@
 <li>为什么比较器需要实现两个用于压缩字符串的方法?</li>
 <li>这两个方法的使用场景有什么区别?</li>
 </ul>
+<p>​   <strong><a href="https://15721.courses.cs.cmu.edu/spring2018/papers/08-oltpindexes1/pugh-skiplists-cacm1990.pdf">SkipList</a>:</strong>我们知道对于一个有序链表而言，它的查找和插入的复杂度都为O(n)。限制有序链表性能的一个重要原因在于它无法进行二分查找。而如果我们采用如下图建立多级索引的方式，我们将能够以O(logn)的时间复杂度查询到我们想要的值。例如，我们需要查找13，我们会从最高级Level 4开始查找。发现下一个Node是INF &gt; 13，因此我们降低高度，从Level 3继续查找。下一个Node是8 &lt;= 13， 因此我们跳转到8的节点，继续查找，发现下一个Node是INF &gt; 13。我们降低高度，从Level 2继续查找，下一个Node是12 &lt;= 13，因此我们跳转到12这个节点。以同样的方式进行查找，最后我们发现12这个节点在level 0的下一个节点是13。这样我们保证每次横向跳跃都筛除了一半的数据，而纵向跳跃的次数是小于等于logn的，因此我们的查找效率为O(logn)。</p>
+<p><center>
+  <img alt="perfect skiplist" src="../../img/perfect_skiplist.png" />
+  <br>
+    <div>perfect skiplist</div>
+</center></p>
+<p><a href="https://codereview.stackexchange.com/questions/159256/cpp-skiplist-for-numeric-values">source from stack Exchange</a></p>
+<p>虽然这样大大优化了链表的查询效率，但是这样会带来额外的空间开销:(n/2 + n/4 + ... + 1) = n个节点的空间。同时，这让新节点的插入成为了一个难题（当一个节点插入后需要修改该节点后续所有节点的height）。为了解决这个问题，Pugh提出了一个巧妙的办法：即只保证每一层的节点数量按概率分布（例如50%的节点为1层节点，25%节点为2层节点,...），而不要求每个位置的节点的高度。这样可以保证插入的节点只用修改前驱节点的指针即可，而不需要改变其他节点的高度（具体数学证明见论文）。这样跳表就保证了插入和查询的时间复杂度都为O(logn)。</p>
+<p><center>
+  <img alt="leveldb skiplist" src="../../img/leveldb_skiplist.png" />
+  <br>
+    <div>leveldb skiplist</div>
+</center></p>
+<p>关于leveldb在skiplist设计上的一些选择问题：</p>
+<ul>
+<li>每层节点数量满足概率为p的几何分布, 这个p值的选取为1/4, 这样牺牲掉了一些常数的查询效率，换取了n / 2个节点内存空间的使用。论文中也推荐p=1/4，除非有非常严格的读速度。</li>
+<li>高度最大值kMaxHeight=12，这样的选择让跳表最多支持4^12个值。</li>
+<li>每个节点只能单向遍历，这样是在假定反向遍历很少的情况下以时间换空间的做法。</li>
+</ul>
+<p>​   另外leveldb调表的一个难点在于提供不加锁的并发读的正确性保证，后续补。</p>
 <hr />
 <h2 id="code-reading">Code Reading:</h2>
 <p>​   首先，我们一起阅读数据库的读写部分。</p>
