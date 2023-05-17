@@ -316,7 +316,7 @@ Emit(AsString(result));
 <p>增大chunk大小，压缩元数据</p>
 </li>
 </ul>
-<p>​   Master的高可用设计:</p>
+<p>​   <strong>Master的高可用设计:</strong></p>
 <ul>
 <li>
 <p>持久化文件名和chunk id的映射关系</p>
@@ -332,8 +332,7 @@ Emit(AsString(result));
 </li>
 </ul>
 <p>​       如果发生Master宕机，通过Chubby进行切换shadow master</p>
-<p>​   </p>
-<p>​   chunkserver的高可用设计:</p>
+<p>​   <strong>chunkserver的高可用设计:</strong></p>
 <ul>
 <li>
 <p>每个chunk会有三个副本，存储在不同的chunkserver中</p>
@@ -354,7 +353,7 @@ Emit(AsString(result));
 <p>Master会选择资源利用率较低，最近创建活动较少，与其他副本不在同一机架上的chunkserver创建新副本。</p>
 </li>
 </ul>
-<p>​           GFS读写流程:</p>
+<p>​           <strong>GFS读写流程:</strong></p>
 <p>​           写入过程: Client和Master进行交互获取文件位置，之后会按距离的拓扑顺序将数据推送到各个副本中。确保所有的数据推送完成后，会向Primary发起写入请求，Primary会按一定的顺序将数据写入，并让其他副本也按照这一顺序进行写入。如果所有的副本都写入成功，则通知Client写入完成，否则会让Client重新推送一次数据，进行后续同样的操作。</p>
 <p><center>
   <img alt="GFS Write Flow" src="../../img/GFS_write_flow.png" />
@@ -367,7 +366,37 @@ Emit(AsString(result));
   <img alt="GFS Consistency Model" src="../../img/GFS_consistency_model.png" />
     <div>GFS Consistency Model</div>
 </center></p>
-<p>​   这里解释一下defined 与consistent的差别在于，defined保证读取最新的写入是一致的。而consistent不保证最新写入的数据一致。</p></p>
+<p>​   这里解释一下defined 与consistent的差别在于，defined保证读取最新的写入是一致的。而consistent不保证最新写入的数据一致。</p>
+<hr />
+<h2 id="vmware-ft">VMware FT</h2>
+<p>​   背景：当我们构建一个服务时，计算机硬件，网络都有可能发生故障。但是我们仍然希望能够稳定的提供服务。一个可行的办法是：复制。</p>
+<p>​   复制的限制：复制能够解决单台计算机的fail-stop故障。fail-stop故障是指当计算机出现故障时，那么它会单纯的停止运行。但是复制无法解决软件中的bug和硬件设计中的缺陷。并且复制的副本之间的错误需要是相互独立的，如果他们之间的错误是有关联的，那么复制对我们就没有帮助。除此之外，复制需要更高昂的成本，这往往取决于单个副本失效会对你造成多大的损失和不便。</p>
+<p>​   常见的复制方法包括两种: State Transfer和Replicated State Machine。State Transfer背后的思想是Primary定期将自己完整的状态，比如内存中的内容，拷贝并发送给Backup。Backup会保存收到的最后一次的状态。复制状态机则假定某一状态在接受到相同的外部输入时会转换到确定的下一个状态。因此，Primary只需要定期将外部事件发送给Backup，Primary和Backup就能保持相同的状态。State Transfer的好处在于不需要更多的假设，更为简单的保证了副本之间的一致性。而复制状态机的好处在于，外部事件往往比服务的状态要小，可以提升复制的性能。</p>
+<p>​   复制状态机设计的主要问题：</p>
+<ul>
+<li>状态的定义</li>
+<li>Primary与Backup之间的同步频率</li>
+<li>Primary发生故障时的切换方案</li>
+<li>当有副本发生故障时，如何维持我们需要的副本数量</li>
+</ul>
+<p>​   状态定义：VMware FT会复制机器的完整状态，这包括了所有的内存，寄存器等所有信息。优点在于对于VMware FT管理的机器上的所有软件都具备了容错性。缺点是，它没有那么的高效。</p>
+<p>​   切换方案：</p>
+<ul>
+<li>
+<p>Primary宕机:当Backup一段时间没有收到Primary的消息时，Backup将会Go alive，不再受来自于Primary的事件驱动，而是自由执行。Backup会在网络中发送消息，让后续的客户端请求发往Backup，而不是Primary。</p>
+</li>
+<li>
+<p>Backup宕机:Primary如果一段时间没有收到Backup的消息，则会抛弃Backup停止向它发送事件。</p>
+</li>
+<li>
+<p>避免重复输出：这里可以通过TCP意外的解决异常的场景。</p>
+</li>
+</ul>
+<p>​   非确定性事件：当一个状态在接受到相同的外部输入时，有可能会转换到不同的状态中。包括网络数据包产生中断的时间，奇怪的指令（包括随机数生成，获取当前时间，获取计算机MAC地址等），多CPU的并发。非确定性时间只能通过状态转移的方法保持一致性。</p>
+<p>​   输出控制：Primary必须保证Backup的确认收到了Log,才能对客户端进行回复。（对性能造成了很严重的限制。有趣的几个想法：Primary指令执行和与Backup通信同时进行；输入送到Primary,输出从Backup送出）</p>
+<p>​   Test-and-Set：为了解决因为网络故障而导致的脑裂，需要一个第三方权威机构对Backup的上线进行认证。</p>
+<hr />
+<h2 id="raft">RAFT</h2></p>
     </article>
 </section>
             <!-- endblock -->
