@@ -292,4 +292,57 @@ Emit(AsString(result));
 
 ​	**集群成员变更：**待补充...
 
-​	
+------
+
+## Linearizability
+
+以下内容参考了[线性一致性](https://zhuanlan.zhihu.com/p/42239873)与[mit6.824翻译](https://mit-public-courses-cn-translatio.gitbook.io/mit6-824/lecture-08-zookeeper/8.3-xian-xing-yi-zhi-linearizability3)
+
+​	问题的提出：当一个多副本的服务或任意其他的服务正确运行意味着什么？
+
+​	我们对于正确的定义就是Linearizability 线性一致或者说Strong consistency强一致。直觉上来说，一个服务是线性一致的，那么它的表现的就像只有一个服务器，并且服务器没有故障，这个服务器每次执行一个客户端请求。更准确地说，一个系统的执行历史是一系列的客户端请求，如果执行历史整体可以按照一个顺序排列，且排列顺序与客户端请求的实际时间相符合，那么它就是线性一致的。
+
+​	对于客户端的一系列请求op1, op2, op3, ... , 对应的请求有一个客户端发出的时间send1, send2, send3, ... , 对应的服务端的回复时间reply1, reply2, reply3, ...。要达到线性一致，我们需要确定请求的排列顺序。这样的排列顺序需要满足:
+
+- 如果reply i > send j, 那么我们连一条i 到j 的有向边，表示请求i 在请求j 之前。
+
+
+
+- 如果 op j 为读， 并且它读到了key k对应的value v， 那么一定存在一个请求op i为写，写入内容是将key k对应的value修改为v。我们连一条i到j的有向边，表示请求i在请求j之前。
+
+​	几个不是线性一致的例子：
+
+<center>
+  ![linearizability1](../img/linearizability1.png)
+    <div>线性不一致 Ex1</div>
+</center>
+
+​	这个例子给我们的教训是：对于系统执行写请求，只能有一个顺序，所有客户端读到的数据的顺序，必须与系统执行写请求的顺序一致。
+
+<center>
+  ![linearizability2](../img/linearizability2.png)
+    <div>线性不一致 Ex2</div>
+</center>
+
+​	这个例子给我们的教训是：对于读请求不允许返回旧的数据，只能返回最新的数据。
+
+​	下面是Lab3的kv raft的架构图：
+
+<center>
+  ![raft_diagram](../img/raft_diagram.png)
+    <div>raft diagram</div>
+</center>
+
+这里我们主要考虑在保证线性一致的情况下一些可能的优化：
+
+​	首先，Get请求不需要传入Raft层进行共识，因为Get请求并不会改变状态。但是需要额外的操作，否则当出现网络分区的情况时，会发生线性不一致的情况。
+
+- ReadIndex: 首先，leader必须返回最新的committed index，因此在leader当选时需要提交一个空日志（所以上一节我在日志复制章节里的想法是正确的），然后再进行read。其次读操作时，需要发送心跳确认自己的leader身份（防止网络分区）。
+
+
+
+- lease read: 通过lease机制维护Leader的状态，减少ReadIndex每次read发送心跳的开销。实际上还能甚至不必等到ReadIndex apply，服务端可以直接返回读请求，这样也是满足线性一致性的。但同时需要注意，由于新Leader可能落后于老Leader，因此只有在Leader的状态机应用了当前term的第一个Log之后才能LeaseRead。
+
+
+
+- follower read：先去 Leader 查询最新的 committed index，然后拿着 committed Index 去 Follower read，从而保证能从 Follower 中读到最新的数据。
