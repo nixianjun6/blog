@@ -341,8 +341,67 @@ Emit(AsString(result));
 
 
 
-- lease read: 通过lease机制维护Leader的状态，减少ReadIndex每次read发送心跳的开销。实际上还能甚至不必等到ReadIndex apply，服务端可以直接返回读请求，这样也是满足线性一致性的。但同时需要注意，由于新Leader可能落后于老Leader，因此只有在Leader的状态机应用了当前term的第一个Log之后才能LeaseRead。
+- lease read: 通过lease机制维护Leader的状态，减少ReadIndex每次read发送心跳的开销（这里必须保证租约的时间小于选举超时时间，这样租约期间只有一个leader）。实际上还能甚至不必等到ReadIndex apply，服务端可以直接返回读请求，这样也是满足线性一致性的。但同时需要注意，由于新Leader可能落后于老Leader，因此只有在Leader的状态机应用了当前term的第一个Log之后才能LeaseRead。
 
 
 
-- follower read：先去 Leader 查询最新的 committed index，然后拿着 committed Index 去 Follower read，从而保证能从 Follower 中读到最新的数据。
+- follower read：先去 Leader 查询最新的 committed index，然后拿着 committed Index 去 Follower read，从而保证能从 Follower 中读到最新的数据。这个优化明显是最好的，因为他将leader的部分工作负载分担给了follower。
+
+------
+
+## Zookeeper
+
+​	问题的提出：Raft实际上是一个库，并不能直接提供可以交互的独立的服务，同时我们也知道要实现一个线性一致的基于RAFT的服务还需要花费额外的努力。因此，Zookeeper旨在能够提供一个通用的协调服务帮助构建分布式应用。
+
+​	一致性保证：我们知道通过RAFT + follower read可以实现线性一致性。但同时在Read的过程中，还是需要花费一次和Leader通信的开销。Zookeeper为了减少这样的开销，而放弃了线性一致性。即Zookeeper的客户端会直接找follower去进行数据读取。Zookeeper这里的一致性保证是写请求（包括即读又写的请求）线性一致（写入raft层log里肯定是线性一致的）和FIFO client order（即对于一个客户端来说，会按照客户端发送的顺序来执行）。由于会出现follower副本不可用的情况，因此客户端会记录最后的读请求对应的applyIndex。对于后续的读请求必须不晚于这个applyIndex。（这里的applyIndex是我的理解）。
+
+​	线性一致性：如果想要做到线性一致性，可以使用sync操作，原理是在读操作之前发送一个空的写请求，以保证读操作能读到最新的数据。（本质上我的理解就相当于把读操作写入log了，估计现在的版本已经优化了）。
+
+​	更具体的来说，Zookeeper可以解决大的数据中心单点失效的问题，比如MapReduce,  GFS中的Master， VMware FT中的TEST-AND-SET。这是Zookeeper设计API时一些具体的动机。同时，为了让一个Zookeeper集群能够运行多个服务，Zookeeper将API设计成了一个层级化的目录结构。这些目录和文件被称为znodes。
+
+​	znodes: Zookper设计了三种znodes。包括Regular znodes，这种znode一旦创建，就永远存在，除非主动删除。第二种叫Ephemeral znodes，如果Zookeeper认为创建它的客户端挂了，它会删除这种类型的znodes。最后一种叫Sequential znodes，当多个客户端同时想以特定名字创建文件时，会在文件名之后加一个数字，并且保证数字不重合，且一定是递增的。
+
+​	API: Zookper以RPC的方式暴露以下API:
+
+- CREATE(PATH, DATA, FLAG)：PATH为文件路径，DATA为数据，FLAG为znode类型。当存在该文件时，会返回FASLE，否则会创建文件，返回TRUE。
+- DELETE(PATH, VERSION): VERSION为版本号，每个znode都会有一个版本号，当znode有更新时，version也会随之增加。表示要删除某个版本的文件。
+- EXIST(PATH, WATCH)：WATCH可以监听文件的变化，当文件有任何变更都会通知客户端。表示某个文件是否存在。
+- GETDATA(PATH, WATCH)。
+- SETDATA(PATH, DATA, VERSION)
+- LIST(PATH)。返回路径下所有文件。
+
+​	一些应用(Zookeeper只能保证一些简单事务的原子性，称之为mini-transaction)：
+
+​	计数器：
+
+```
+WHILE TRUE:
+    X, V = GETDATA("F")
+    IF SETDATA("f", X + 1, V):
+        BREAK
+```
+
+​		Non-Scalable Lock：
+
+```
+WHILE TRUE:
+    IF CREATE("f", data, ephemeral=TRUE): RETURN
+    IF EXIST("f", watch=TRUE):
+        WAIT
+```
+
+​		这种锁和上一个计数器都有羊群效应，复杂度为O(n^2)
+
+​		Scalable Lock:
+
+```
+CREATE("f", data, sequential=TRUE, ephemeral=TRUE)
+WHILE TRUE:
+    LIST("f*")
+    IF NO LOWER #FILE: RETURN
+    IF EXIST(NEXT LOWER #FILE, watch=TRUE):
+        WAIT
+```
+
+------
+
