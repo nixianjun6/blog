@@ -511,7 +511,16 @@ WHILE TRUE:
     IF EXIST(NEXT LOWER #FILE, watch=TRUE):
         WAIT
 </code></pre>
-<hr /></p>
+<hr />
+<h2 id="craq">CRAQ</h2>
+<p>​   背景：CRAQ是对于CR的一种旧方案的改进，但是CRAQ实现了将读请求分发到任意副本执行并能够保证线性一致性。</p>
+<p>​   CR：在CR系统中，服务器按链排列，第一个服务器称为HEAD，最后一个称为TAIL。当客户端发送一个写请求，写请求总是先送到HEAD，HEAD会先在本地apply之后再将写请求通过链传向下一个服务器，以此类推，直到写请求传到TAIL，TAIL apply之后会回复客户端。对于读请求，客户端会发往TAIL。当没有故障的时候，整个系统就像只有TAIL一台机器一样 ，因此CR是线性一致的。当某个节点出现故障时，基本上只要将故障节点从链中移除即可。</p>
+<p>​   Why CR: CR相比于RAFT来说，拥有更好的性能，这时因为当客户端请求变多时，RAFT leader很容易会成为bottle neck，而CR则会有HEAD和TAIL分担请求并且HEAD只用将请求发送给下一个节点而不是其他所有节点，因此bottle neck会来的更晚一些。除此之外，CR的故障恢复也更容易。</p>
+<p>​   CR drawback: CR无法处理网络分区的问题，当HEAD和第二个节点的网络连接出现问题时，会出现脑裂现象。因此CR并不是一个完整的复制方案，需要一个第三方的权威机构Configuration Manager去决定一条链的节点组成。CRAQ基于Zookeeper构建了Configuration Manager。（实际上还是不能解决HEAD和第二个节点无法通信的问题，需要更多的细节来设计Configuration Manager）</p>
+<p>​   CRAQ进一步构建一个更高效的系统：实现数据分片，每个分片可以是一条链(不一定是链，使用CR或是RAFT还是其他的共识算法，取决于你的场景。比如RAFT会受到Leader的限制，而CR也会受到链上最慢的服务器的限制)，每个链都可以构建极其高效的结构存储数据，进而进一步加大并发的读写请求。同时，也不会出现网络分区问题，因为这些链会由一个可靠的，不会脑裂的Configuration Manager管理。</p>
+<hr />
+<h2 id="aurora">Aurora</h2>
+<p>​   </p></p>
     </article>
 </section>
             <!-- endblock -->
