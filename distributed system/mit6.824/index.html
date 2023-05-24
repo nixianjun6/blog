@@ -520,7 +520,25 @@ WHILE TRUE:
 <p>​   CRAQ进一步构建一个更高效的系统：实现数据分片，每个分片可以是一条链(不一定是链，使用CR或是RAFT还是其他的共识算法，取决于你的场景。比如RAFT会受到Leader的限制，而CR也会受到链上最慢的服务器的限制)，每个链都可以构建极其高效的结构存储数据，进而进一步加大并发的读写请求。同时，也不会出现网络分区问题，因为这些链会由一个可靠的，不会脑裂的Configuration Manager管理。</p>
 <hr />
 <h2 id="aurora">Aurora</h2>
-<p>​   </p></p>
+<p>​   以下内容很多引用了<a href="https://mit-public-courses-cn-translatio.gitbook.io/mit6-824/lecture-10-cloud-replicated-db-aurora/10.1-aurora-bei-jing-li-shi">mit6.824翻译</a></p>
+<p>​   背景：最开始Amazon提供的云产品叫EC2。Amazon在每个服务器上都会运行VMM，并且搭载许多个EC2实例。每个EC2实例上都会运行一个标准的操作系统，在操作系统之上运行各种应用程序，比如web服务，数据库等。这些服务当中，数据库相比于其他服务，需要持久化存储数据。一个简单的方式是持久化存储数据存储在服务器的本地硬盘上，但这样会出现单点失效的问题。而实际上Amazon本身有块存储的服务，叫做S3。这样可以定期对数据库做snapshot，并将snapshot存储在S3上，并基于snapshot做故障恢复。这样做的问题在于，会损失两次snapshot之间的数据。所以Amazon又提供了EBS服务以实现容错且支持持久化存储的服务。EBS底层是通过CR构建的双副本系统。尽管EBS是一次很大的进步，但仍然存在一些问题：大量的网络负载与较低的容错性（出于性能考虑，EBS双副本存储在一个数据中心）。</p>
+<p><center>
+  <img alt="RDS" src="../../img/RDS.png" />
+    <div>RDS</div>
+</center></p>
+<p>​   于是Amazon又提供了RDS服务加强了容错性。尽管这种架构增强了容错性，因为在不同的数据中心有了第二个副本拷贝，但是RDS的性能十分糟糕。于是，Amazon为了兼顾性能和容错，放弃了这样通用的存储服务，提出了Aurora。</p>
+<p><center>
+  <img alt="Aurora_firstlook" src="../../img/Aurora_firstlook.png" />
+    <div>first look at Aurora</div>
+</center></p>
+<p>​   Aurora的改变：Aurora将原来的EBS替换成了分布在3个数据中心的6个副本。同时，网络通信传递的数据只有Log条目（Log相对于整个data page来说小很多，但这里的存储系统无法理解Log，因此不再是通用的存储服务，而是应用定制的存储系统）。另一个重要的事情是，不再需要所有副本都确认才能继续执行操作，而只需要的Quorum形成就可以继续执行操作了。</p>
+<p>​   Quorum Replication：假设有N个副本。为了能够执行写请求，必须要确保写操作被W个副本确认，W小于N。所以你需要将写请求发送到这W个副本。如果要执行读请求，那么至少需要从R个副本得到所读取的信息。这里的W对应的数字称为Write Quorum，R对应的数字称为Read Quorum。这是一个典型的Quorum配置。必须满足R + W &gt;= N + 1，这样至少确保一个副本即收到了最新的写请求，也收到了最新的读请求。这样，读请求由版本号最高的副本进行回复就可以读到最新的数据。相比于CR，QR的优势在于可以容忍暂时的慢副本，以及能够更灵活的调整系统的读写性能。Aurora的取值为N=6,W=4,R=3。</p>
+<p>​   Why need QR Read:实际上每次QR Write之后，每个存储服务器都会告知数据库服务服务器他们确认的log index。因此只要每次向拥有最高连续log index的服务器发起读请求即可，而不需要QR Read。但是，当数据库服务器宕机时，Amazon会自动启动一个新的EC2实例与数据库软件，并且会知道数据存放的6个存储服务器并清除这些副本中Abort的事务。这时，就需要进行QR Read，因为有些log index可能需要被丢弃。</p>
+<p>​   Aurora的读写：写操作时不会直接写，而是会维护每个page的Log list，新的写请求到来时会将Log append到对应的log list中。直到下次需要读这个page的时候，这个page的log list中的log才会apply。</p>
+<p>​   Protection Group:由于数据库所需要持久化的数据量超过单台机器的存储空间。因此，需要将这些数据划分成不同的PG，每个PG包含6个存储服务器作为副本。按照data page对PG进行划分，每个PG存储部分data page以及这些data page相关联的log。</p>
+<p>​   重建副本：当一个存储服务器挂了之后，假设上面存储了M个PG。我们需要重新找到M个存储服务器，并将这M个PG的副本分别拷贝到这M个存储服务器上。</p>
+<p>​   Read-only database:主数据库实例的副本，只提供读请求查询，为主数据库实例分担读请求压力。</p>
+<hr /></p>
     </article>
 </section>
             <!-- endblock -->
