@@ -6,6 +6,8 @@ nav:
   - leveldb: 'database/leveldb.md'
 - Distributed System:
   - mit6.824: 'distributed system/mit6.824.md'
+- Algorithm:
+  - algorithm: 'algorithm/algorithm.md'
 theme:
   name: 'dracula'
   logo: img/nixianjun.png
