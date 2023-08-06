@@ -583,7 +583,25 @@ WHILE TRUE:
 <li>主要考虑当Log写入Petal，但是缓存数据没有写入的情况。会由一个新的工作站WS2会检查Log条目的更新内容，并向Petal执行Log条目中的更新内容。当WS2执行完WS1存放在Petal中的Log，它会通知锁服务器，之后锁服务器会释放WS1持有的锁。另一个有趣的可能是，工作站WS1在写入Log之后，并且在写入块数据的过程中崩溃了。先不考虑一些极其重要的细节，执行恢复的工作站WS2并不知道WS1在哪个位置崩溃的，它只能看到一些Log条目，同样的，WS2会以相同的方式重新执行Log。尽管部分修改已经写入了Petal，WS2会重新执行修改。对于部分已经写入的数据，相当于在相同的位置写入相同的数据。对于部分未写入的数据，相当于更新了Petal中的这部分数据，并完成了操作。</li>
 <li>更复杂的场景时，释放锁时崩溃。这样可能会导致一些提前的事务，延迟执行了而带来了错误的结果。Frangipani是通过版本号来解决这一问题的。</li>
 <li>还有一个问题在于，恢复过程中可能其他工作站还在频繁的读取文件系统占用需要的锁。（这个问题其实不是问题，恢复过程中不需要关心锁的问题。）</li>
-</ul></p>
+</ul>
+<hr />
+<h2 id="distributed-transaction">Distributed Transaction</h2>
+<p>并发控制：</p>
+<ul>
+<li>悲观锁并发控制：二阶段锁</li>
+<li>OCC</li>
+</ul>
+<p>原子提交：二阶段提交</p>
+<p><center>
+  <img alt="2PC" src="../../img/2pc.png" />
+    <div>2PC</div>
+</center></p>
+<p>B crash before Yes:B可以终止事务</p>
+<p>B crash after Yes:B在回复Yes之前需要将该事务相关Log持久化到磁盘上，因此当B恢复后可以继续完成它那部分的工作。</p>
+<p>B收到两条commit:简单回复ACK即可。</p>
+<p>TC crash before commit: TC可以终止事务</p>
+<p>TC crash after commit: TC发送commit消息之前也需要持久化事务相关数据。</p>
+<p>网络问题：TC长时间没有收到Yes/No / 服务器长时间没有收到prepare后可以单方面终止事务。如果服务器长时间没有收到commit消息，需要长时间一直等待，因为其他服务器可能已经commit了。</p></p>
     </article>
 </section>
             <!-- endblock -->
