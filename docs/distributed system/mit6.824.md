@@ -536,3 +536,24 @@ TC复制：两阶段提交由于TC宕机或者网络故障而无法回复commit�
 
 ------
 
+## FaRM
+
+NVRAM：非易失性RAM,省去了持久化到磁盘的时间。主要是通过加了一个电源，当供电故障时，FaRM才会将RAM上的数据通过小电源的电量去持久化到磁盘上。（只对供电故障有效）
+
+kernel bypass:应用程序跳过内核直接对内存和网络接口卡进行操作。
+
+RDMA:远程内存访问，可以直接对另一个服务器的内存数据进行修改。（FaRM通过RDMA进行数据库读取，而没有用来写入）
+
+OCC:读取数据不会上锁，写数据先写入buffer中。commit之前需要validation，如果验证成功则commit，否则就abort。
+
+commit：
+
+<center>
+  ![FaRM_commit](../img/FaRM_commit.png)
+    <div>FaRM commit</div>
+</center>
+
+Lock阶段：写数据需要拿锁并验证版本号，失败则终止
+
+验证阶段：验证读取对象没有更新（锁和版本号），失败则终止
+
