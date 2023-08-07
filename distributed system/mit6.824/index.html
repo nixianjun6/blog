@@ -617,7 +617,19 @@ WHILE TRUE:
 <li>事务选择的时间戳为latest time。</li>
 <li>同时还需要保证R/W事务提交的时间戳小于下一个读事务的earliest time才能提交。</li>
 </ul>
-<hr /></p>
+<hr />
+<h2 id="farm">FaRM</h2>
+<p>NVRAM：非易失性RAM,省去了持久化到磁盘的时间。主要是通过加了一个电源，当供电故障时，FaRM才会将RAM上的数据通过小电源的电量去持久化到磁盘上。（只对供电故障有效）</p>
+<p>kernel bypass:应用程序跳过内核直接对内存和网络接口卡进行操作。</p>
+<p>RDMA:远程内存访问，可以直接对另一个服务器的内存数据进行修改。（FaRM通过RDMA进行数据库读取，而没有用来写入）</p>
+<p>OCC:读取数据不会上锁，写数据先写入buffer中。commit之前需要validation，如果验证成功则commit，否则就abort。</p>
+<p>commit：</p>
+<p><center>
+  <img alt="FaRM_commit" src="../../img/FaRM_commit.png" />
+    <div>FaRM commit</div>
+</center></p>
+<p>Lock阶段：写数据需要拿锁并验证版本号，失败则终止</p>
+<p>验证阶段：验证读取对象没有更新（锁和版本号），失败则终止</p></p>
     </article>
 </section>
             <!-- endblock -->
