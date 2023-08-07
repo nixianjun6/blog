@@ -511,3 +511,28 @@ TC crash before commit: TC可以终止事务
 TC crash after commit: TC发送commit消息之前也需要持久化事务相关数据。
 
 网络问题：TC长时间没有收到Yes/No / 服务器长时间没有收到prepare后可以单方面终止事务。如果服务器长时间没有收到commit消息，需要长时间一直等待，因为其他服务器可能已经commit了。
+
+------
+
+## Spanner
+
+背景：Spanner是一个实现数据分片并且每个分片有多个数据副本的系统，主要的挑战包括：想要读取本地服务器的数据（即想就近读follower的数据）以及实现分布式事务功能。
+
+<center>
+  ![spanner_transcation](../img/spanner_transcation.png)
+    <div>Spanner R/W Transcation</div>
+</center>
+
+TC复制：两阶段提交由于TC宕机或者网络故障而无法回复commit消息时，会发生阻塞。Spanner通过对TC进行复制，解决了这个问题。
+
+只读事务的线性一致性保证：快照隔离。对于R/W事务时间戳为提交时间，对于R/O事务时间戳为开始时间，所有的事务按照时间戳顺序执行。（**思考**：旧快照垃圾回收）
+
+安全时间：直接读follower数据可能会读到老数据。因此，只能读取安全事件内follower的数据，即只有当follower有比当前R/O事务更新的时间戳的日志时才能进行读取。（Spanner的每个Paxos组的Leader会按log的时间戳顺序同步数据）
+
+真实时间：快照隔离存在时间同步问题，即每个服务器上达到完美的时间同步是不可能的。每个事务获取的时间为一个区间[earliest time, latest time]。
+
+- 事务选择的时间戳为latest time。
+- 同时还需要保证R/W事务提交的时间戳小于下一个读事务的earliest time才能提交。
+
+------
+
