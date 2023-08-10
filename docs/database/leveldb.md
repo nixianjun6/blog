@@ -73,6 +73,37 @@ my test code is [here](https://github.com/nixianjun6/leveldb_test).
 
 ​	另外leveldb调表的一个难点在于提供不加锁的并发读的正确性保证，后续补。
 
+​	**LSM-TREE**:
+
+<center>
+  ![update_structure](../img/update_structure.png)
+  <br>
+    <div>update structure</div>
+</center>
+
+​	常用的存储结构分为就地更新结构（B+树）和异位更新结构。就地更新结构由于随机写会产生较大的写开销，而异位更新结构因为顺序写的原因则可以在写上获取到优秀的性能。LSM树是异位更新结构的集大成者。同时由于SSD大大优化了读性能以及不具备覆盖写的特性，进一步促进了LSM树的发展。
+
+​	存储结构的共性特点：
+
+- 适合磁盘存储，IO尽量少且一次读取连续的区域。
+- 允许并发操作，增删改对存储结构的影响尽量小。
+
+<center>
+  ![lsm1](../img/lsm1.png)
+  <br>
+    <div>LSM Tree</div>
+</center>
+
+​		首先，写数据首先要记录WAL。然后数据有序写入Active Memtable,当Active Memtable写满后则转换为Immutable Memtable.两类Memtable都在内存中，当Immutable Memtable达到指定数量之后，落盘到磁盘的L0层（minor merge，图有问题，L0层没有SST），当L0层满时，会触发compaction操作，将L0数据和L1数据合并（有相同key的数据，合并成最新的数据），生成出不可变的SSTable存放在L1层。
+
+<center>
+  ![lsm2](../img/lsm2.png)
+  <br>
+    <div>Merge Policy</div>
+</center>
+
+​	LevelDB采用的合并策略是，当前层满后与下一层一起合并，并放入下一层，也就是Leveling merge policy。当也可以采用Tiering Merge Policy，每层都会有多个重叠的组件，合并时当前层进行合并，并放入下一层。（可以提升写性能）
+
 ------
 
 ## Code Reading:
