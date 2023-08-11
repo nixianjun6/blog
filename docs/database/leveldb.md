@@ -101,23 +101,67 @@ my test code is [here](https://github.com/nixianjun6/leveldb_test).
   <br>
     <div>Merge Policy</div>
 </center>
-
 ​	LevelDB采用的合并策略是，当前层满后与下一层一起合并，并放入下一层，也就是Leveling merge policy。当也可以采用Tiering Merge Policy，每层都会有多个重叠的组件，合并时当前层进行合并，并放入下一层。（可以提升写性能）
+
+​	**Bloom Filter:**假阳性，但是不会有假阴性。存储空间m bit，k个哈希函数，判断n个元素。如果m过小，则随着元素的增多，很多fiter就会全部置为1，查找失去意义。如果k过多，bloom filter效率会降低，k过小，误报率增大。公式：k = ln2 * m / n。
 
 ------
 
-## Code Reading:
+## Basic component
 
-​	首先，我们一起阅读数据库的读写部分。
+​	**内存管理：**内存频繁创建释放需要内存池进行管理，在memtable组件中，会有大量内存创建。Arena内存池的基本思路就是预先申请一大块内存，然后多次分配给不同的对象，从而减少malloc和new的调用次数，同时可以频繁的申请释放内存易造成内碎片，Arena内存池可以避免内碎片的产生。
+
+- Allocate:如果需要的内存小于等于剩余内存，则直接分配。否则调用AllocateFallback
+- AllocateFallback:如果所需要内存bytes大于kBlockSize的1/4，则再申请一个新的bytes大小的内存块。否则申请一个新的kBlockSize大小的内存块。
+- AllocateAligned和Allocate类似，但是会进行对齐，即分配的首地址为b/8的倍数。
+
+​	**Key:**
 
 <center>
-  ![leveldb read and write](../img/leveldb_read_write.png)
+  ![leveldb key](../img/leveldb key.png)
   <br>
-    <div>How Leveldb read && write</div>
+    <div>leveldb key</div>
 </center>
 
-​	读操作: 首先会进行上锁，并读出mem_, imm_, versions->current()。然后进行解锁，并依次在mem_, imm_, current中根据look up key进行查找。找到之后进行上锁，如果是从current中找到的，并且current更新了状态，会触发一个可能的压缩操作。之后，维护mem_, imm_, current的引用计数，并返回值。读这段代码我有三个问题:
+​	**Log:**
 
-- mutex_控制的是线程间什么样的并发过程?
-- mem_, imm_, current分别是什么?
-- 这里的状态更新是什么，为什么会触发一个可能的压缩操作?
+​		crc(4) |  length(2) | type(1):FULL / FIRST/ MIDDLE / LAST | content
+
+​	**SST:**
+
+​		data block 1 | ... | data block N | meta block 1 | ... | meta block K | meta index block | index block | footer
+
+​		footer: meta index handle | index handle | padding | magic(判断是否是sst文件)
+
+​		BlockHandle: offset_ | size_
+
+​		Block: k/v 1 | ... | k/v N | restart offset 1 | ... | restart offset N | restart point count | type（压缩类型） | crc
+
+​		k/v : shared_bytes | unshared_bytes | value_len | key_delta | value。由于这个格式并不能保存键值对完整的键值数据，因此引入了重启点的概念。每个重启点固定四个字节，指向一个偏移量，该地址是保存完整键值对数据开始地址。
+
+​		index block:保存的key为前一个data block的最后一个key和后一个data block第一个key的最小分割符（eg. abceg 和 abcqddh的最小分割符为abcf）。value为BlockHandle记录数据块的位置。
+
+​		data block:重启点过多会导致存储效率过低，过少则会导致读取效率过低。
+
+​		meta blcok: 为了加速查找，将bloom filter的数据保存到元数据中。filter 0 | ... | filter N | offset 0 | ... | offset N | filter size | filter base | type（块类型） | crc。
+
+​		**Compaction**：
+
+- size_compaction:0层如果文件数大于等于4则所有文件都需要进行一次Compaction操作。1-5层则根据该层文件的总大小决定，如果超过该层文件允许的最大值，则需要进行Compaction操作
+- seek_compaction:如果数据库中包含某个key为k的键值对，但是在某层某个SST文件（key区间包含k）没有查到数据时，则算作一个无效读取。当无效读取数量超过allowed_seeks时， 则该文件需要被压缩。（allowed_seeks大小为文件大小/16384）
+
+​		每次Compaction会调用VersionSet中的LogAndApply操作：
+
+- 将当前版本根据版本变化（VersionEdit）进行处理，然后生成一个新的版本。
+- 将版本变化写入Manifest文件
+- 执行Finalize方法，更新Version参数
+- 将新生成的Version挂载到VersionSet上，并将current_置为最新版本
+
+​		Compaction流程：
+
+- 首先由于键值的写入/读取出发压缩策略1/2触发压缩
+- 判断是否需要将imMemtable生成为SSTable.如果不需要则选择出需要参与压缩操作的文件，然后执行压缩，最后删除无用文件。
+
+​		文件选取：对于策略一，选取compaction_pointor_ 后的第一个文件。对于策略二，直接选取compaction_file_ 即可。然后选取下一层有overlap的sst文件。
+
+​		压缩执行：先判断是否IsTrivialMove:当level层只有一个sst文件，且与Level+1层无重叠，与level + 2层重叠度小于阈值时，可以直接将本次SST移动到level + 1层。如果不可以，则生成一个归并排序的迭代器，遍历inputs_ [0]和inputs_ [1]的所有文件，每次选取一个最小的键写入新生成的文件。选取键后需要判断该key可不可以删除，如果有重复的键或者该操作为删除并且更高层没有该key则可以删除。
