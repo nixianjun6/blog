@@ -9,7 +9,7 @@ nav:
 - Algorithm:
   - algorithm: 'algorithm/algorithm.md'
 - Language:
-  - language: 'language/C++.md'
+  - C++: 'language/C++.md'
 theme:
   name: 'dracula'
   logo: img/nixianjun.png
