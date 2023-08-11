@@ -8,6 +8,8 @@ nav:
   - mit6.824: 'distributed system/mit6.824.md'
 - Algorithm:
   - algorithm: 'algorithm/algorithm.md'
+- Language:
+  - language: 'language/C++.md'
 theme:
   name: 'dracula'
   logo: img/nixianjun.png
