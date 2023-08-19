@@ -318,6 +318,14 @@
     <div>Merge Policy</div>
 </center>
 ​   LevelDB采用的合并策略是，当前层满后与下一层一起合并，并放入下一层，也就是Leveling merge policy。当也可以采用Tiering Merge Policy，每层都会有多个重叠的组件，合并时当前层进行合并，并放入下一层。（可以提升写性能）</p>
+<p>​   SSTable：</p>
+<p><center>
+  <img alt="SSTable" src="../../img/sstable1.jpg" />
+  <br>
+    <img alt="SSTable" src="../../img/sstable2.jpg" />
+  <br>
+    <div>SStable</div>
+</center></p>
 <p>​   <strong>Bloom Filter:</strong>假阳性，但是不会有假阴性。存储空间m bit，k个哈希函数，判断n个元素。如果m过小，则随着元素的增多，很多fiter就会全部置为1，查找失去意义。如果k过多，bloom filter效率会降低，k过小，误报率增大。公式：k = ln2 * m / n。</p>
 <hr />
 <h2 id="basic-component">Basic component</h2>
@@ -358,7 +366,7 @@
 </ul>
 <p>​       Compaction流程：</p>
 <ul>
-<li>首先由于键值的写入/读取出发压缩策略1/2触发压缩</li>
+<li>首先由于键值的写入/读取触发压缩策略1/2触发压缩</li>
 <li>判断是否需要将imMemtable生成为SSTable.如果不需要则选择出需要参与压缩操作的文件，然后执行压缩，最后删除无用文件。</li>
 </ul>
 <p>​       文件选取：对于策略一，选取compaction_pointor_ 后的第一个文件。对于策略二，直接选取compaction_file_ 即可。然后选取下一层有overlap的sst文件。</p>
