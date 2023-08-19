@@ -131,3 +131,29 @@ fn get_cluster_info() -> Result<ClusterMap> {
 **Arc**
 
 线程安全的引用计数指针。代表原子引用计数。
+
+------
+
+## Option
+
+可选值。Type [`Option`](https://doc.rust-lang.org/nightly/core/option/enum.Option.html) represents an optional value: every [`Option`](https://doc.rust-lang.org/nightly/core/option/enum.Option.html) is either [`Some`](https://doc.rust-lang.org/nightly/core/option/enum.Option.html#variant.Some) and contains a value, or [`None`](https://doc.rust-lang.org/nightly/core/option/enum.Option.html#variant.None), and does not. 
+
+map:通过函数应用于包含的值，Maps an `Option<T>` to `Option<U>`
+
+------
+
+## crossbeam_skiplist
+
+skipMap.get:返回一个Entry，可以用于访问键的关联值
+
+------
+
+## std::ops::Bound
+
+键范围的端点。
+
+------
+
+## Box
+
+A pointer type that uniquely owns a heap allocation of type `T`.
