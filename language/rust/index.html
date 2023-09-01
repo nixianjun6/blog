@@ -248,100 +248,21 @@
                 <section class="p-md-5 section-content">
     <article>
         <p><h1 id="rust">Rust</h1>
-<h2 id="bytes">bytes</h2>
-<p>提供了高效的字节缓冲区结构（Bytes）和用于缓冲区实现（Buf、BufMut）的特征。</p>
-<p><strong>Bytes</strong>是用于存储和操作连续内存片的高效容器。Bytes value通过允许多个Bytes对象指向相同的底层内存来促进零复制编程。</p>
-<p><strong>Buf</strong>和<strong>BufMut</strong>提供对缓冲区的读写访问，维护跟踪底层字节存储中当前位置的游标，当读取或写入字节时，光标前进。</p>
-<p>Buf:从缓冲区读取字节，最简单的Buf是&amp;[u8]。常用接口包括：<strong>get_u16</strong>(以大端字节顺序从self获取无符号16位整数，当前位置前进2)</p>
-<p>BufMut:提供对字节的顺序写入访问的值的特征，最简单的BufMut是Vec<u8>。常用的接口包括：<strong>put</strong>（将字节从src传输到self并将光标前进所写入的字节数），put_u16(以大端字节顺序将无符号16位整数写入self，当前位置前进2)</p>
-<p>光标的移动也可以通过advance函数操作</p>
-<pre><code class="language-rust">// Vec -&gt; Bytes Write
-let mut buf: Vec&lt;u8&gt; = vec.clone();
-buf.put(xxx);
-buf.put_u16(xxx);
-buf.into()
-
-//Vec -&gt;Bytes Write partially
-buf.copy_to_bytes(len)
-
-//Bytes -&gt; Vec Write
-buf.put_slice(&amp;b)
-
-// Vec -&gt; Vec Read
-let mut entry = &amp;data[offset..]
-let key_len = entry.get_u16() as typename;
-let key = entry[..key_len].to_vec();
-entry.advance(key_len);
-</code></pre>
+<p>背景：很难编写内存/线程安全的代码。Rust的期望是性能可以和 C/C++ 媲美，还能保证安全性，同时可以提供⾼ 效的开发效率，代码还得容易维护。</p>
+<p>设计思想：安全；并发；高效；零成本抽象。</p>
 <hr />
-<h2 id="convert">Convert</h2>
-<p>用于类型转换的特征</p>
-<p><strong>into</strong>: Converts this type into the (usually inferred) input type.</p>
-<p><strong>from</strong>: <a href="https://rustwiki.org/zh-CN/std/convert/trait.From.html"><code>From</code></a> trait 允许一种类型定义 “怎么根据另一种类型生成自己”.</p>
-<hr />
-<h2 id="slice">Slice</h2>
-<p><strong>Chunks</strong>: 以块为单位对切片进行迭代的迭代器，从切片的开头开始</p>
-<p><strong>partition_point</strong>:根据给定谓词返回分区点的索引。可以配合saturating_sub（1）找到相等的点。</p>
-<hr />
-<h2 id="iter">Iter</h2>
-<p><strong>map</strong>: 迭代器方法，接受一个闭包并创建一个迭代器，该迭代器在每个元素上调用该闭包。</p>
-<p><strong>collect</strong>: 迭代器方法，将迭代器转换为集合。</p>
-<pre><code class="language-rust">// Bytes -&gt; Vec Read data: &amp;[u8]
-data_raw = &amp;data[start..end];
-data_Vec_u16 = data_raw.chunks(SIZEOF_U16).map(|mut x| x.get_u16()).collect();
-data_Vec_u8 = data_raw.to_vec();
-</code></pre>
-<hr />
-<h2 id="crate">模块与crate</h2>
-<p>(以下内容来自于rustwiki.org)</p>
-<p>默认情况下，模块中的项拥有私有的可见性（private visibility），不过可以加上 <code>pub</code> 修饰语来重载这一行为。模块中只有公有的（public）项可以从模块外的作用域访问。</p>
-<p>结构体的字段也是一个可见性的层次。字段默认拥有私有的可见性，也可以加上 <code>pub</code> 修饰语来重载该行为。只有从结构体被定义的模块之外访问其字段时，这个可见性才会起作用，其意义是隐藏信息（即封装，encapsulation）。</p>
-<p><code>use</code> 声明可以将一个完整的路径绑定到一个新的名字，从而更容易访问</p>
-<p>可以在路径中使用 <code>super</code> （父级）和 <code>self</code>（自身）关键字，从而在访问项时消除歧义，以及防止不必要的路径硬编码。</p>
-<p>crate（中文有 “包，包装箱” 之意）是 Rust 的编译单元。当调用 <code>rustc some_file.rs</code> 时，<code>some_file.rs</code> 被当作 <strong>crate 文件</strong>。如果 <code>some_file.rs</code> 里面含有 <code>mod</code> 声明，那么模块文件的内容将在编译之前被插入 crate 文件的相应声明处。换句话说，模块<strong>不会</strong>单独被编译，只有 crate 才会被编译。</p>
-<p>crate 可以编译成二进制可执行文件（binary）或库文件（library）。默认情况下，<code>rustc</code> 将从 crate 产生二进制可执行文件。这种行为可以通过 <code>rustc</code> 的选项 <code>--crate-type</code> 重载。</p>
-<hr />
-<h2 id="result"><a href="https://rustwiki.org/zh-CN/rust-by-example/error/result.html">Result</a></h2>
-<p>(以下内容来自于rustwiki.org)</p>
-<p><a href="https://rustwiki.org/zh-CN/std/result/enum.Result.html"><code>Result</code></a> 是 <a href="https://rustwiki.org/zh-CN/std/option/enum.Option.html"><code>Option</code></a> 类型的更丰富的版本，描述的是可能的<strong>错误</strong>而不是可能的<strong>不存在</strong>。</p>
-<p>也就是说，<code>Result&lt;T，E&gt;</code> 可以有两个结果的其中一个：</p>
-<ul>
-<li><code>Ok&lt;T&gt;</code>：找到 <code>T</code> 元素</li>
-<li><code>Err&lt;E&gt;</code>：找到 <code>E</code> 元素，<code>E</code> 即表示错误的类型。</li>
-</ul>
-<hr />
-<h2 id="stdmem">std::mem</h2>
-<p>处理内存的基本函数</p>
-<p><strong>replace</strong><T>(dest: &amp;mut T, src: T) -&gt; T: move src -&gt; dest, 返回先前的dest</p>
-<p><strong>take</strong><T>(dest: &amp;mut T) -&gt; T: 将dest替换成T的默认值，返回之前的dest</p>
-<hr />
-<h2 id="anyhow"><a href="https://docs.rs/anyhow/latest/anyhow/">anyhow</a></h2>
-<p>提供了anyhow::Error，一种基于特征对象的错误类型，用于在Rust应用程序中轻松地进行惯用错误处理。</p>
-<p>Details: 使用Result<T, anyhow::Error>或等效的anyhow::Result<T>作为易出错函数的返回类型。Within the function, use <code>?</code> to easily propagate any error that implements the <code>std::error::Error</code> trait.</p>
-<pre><code class="language-rust">use anyhow::Result;
-
-fn get_cluster_info() -&gt; Result&lt;ClusterMap&gt; {
-    let config = std::fs::read_to_string(&quot;cluster.json&quot;)?;
-    let map: ClusterMap = serde_json::from_str(&amp;config)?;
-    Ok(map)
+<p><strong>所有权</strong></p>
+<p>实现保障内存安全，无GC，运行时高性能的目标。</p>
+<pre><code class="language-rust">fn main() {
+    let name = &quot;Pascal&quot;.to_string();
+    let a = name;
+    let b = name;
 }
 </code></pre>
-<hr />
-<p><strong>Arc</strong></p>
-<p>线程安全的引用计数指针。代表原子引用计数。</p>
-<hr />
-<h2 id="option">Option</h2>
-<p>可选值。Type <a href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html"><code>Option</code></a> represents an optional value: every <a href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html"><code>Option</code></a> is either <a href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html#variant.Some"><code>Some</code></a> and contains a value, or <a href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html#variant.None"><code>None</code></a>, and does not. </p>
-<p>map:通过函数应用于包含的值，Maps an <code>Option&lt;T&gt;</code> to <code>Option&lt;U&gt;</code></p>
-<hr />
-<h2 id="crossbeam_skiplist">crossbeam_skiplist</h2>
-<p>skipMap.get:返回一个Entry，可以用于访问键的关联值</p>
-<hr />
-<h2 id="stdopsbound">std::ops::Bound</h2>
-<p>键范围的端点。</p>
-<hr />
-<h2 id="box">Box</h2>
-<p>A pointer type that uniquely owns a heap allocation of type <code>T</code>.</p></p>
+<p><center>
+  <img alt="rustowner1" src="../../img/rustowner1.png" />
+  <br>
+</center></p></p>
     </article>
 </section>
             <!-- endblock -->
