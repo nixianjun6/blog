@@ -248,11 +248,12 @@
                 <section class="p-md-5 section-content">
     <article>
         <p><h1 id="rust">Rust</h1>
+<p>source from <a href="https://github.com/wubx/rust-in-databend">https://github.com/wubx/rust-in-databend</a></p>
 <p>背景：很难编写内存/线程安全的代码。Rust的期望是性能可以和 C/C++ 媲美，还能保证安全性，同时可以提供⾼ 效的开发效率，代码还得容易维护。</p>
 <p>设计思想：安全；并发；高效；零成本抽象。</p>
 <hr />
 <p><strong>所有权</strong></p>
-<p>实现保障内存安全，无GC，运行时高性能的目标。</p>
+<p>所有程序在运行时都必须管理它们使用计算机内存的方式。</p>
 <pre><code class="language-rust">fn main() {
     let name = &quot;Pascal&quot;.to_string();
     let a = name;
@@ -262,7 +263,28 @@
 <p><center>
   <img alt="rustowner1" src="../../img/rustowner1.png" />
   <br>
-</center></p></p>
+</center></p>
+<p>如图所示，当把name赋值给a时会将所有权也交给a，导致let b = name报错。</p>
+<pre><code class="language-rust">fn main() {
+    let name = &quot;Pascal&quot;.to_string();
+    let a = name;
+    let b = a.clone();
+}
+</code></pre>
+<p><center>
+  <img alt="rustowner2" src="../../img/rustowner2.png" />
+  <br>
+</center></p>
+<p>​   如图所示，使用clone会进行深拷贝。</p>
+<pre><code class="language-rust">fn main() {
+    let name = &quot;Pascal&quot;.to_string();
+    let a = &amp;name;
+    let b = a; // or let b = &amp;name;
+}
+</code></pre>
+<p>​   可以通过&amp;引用，而使name不丢失所有权。</p>
+<hr />
+<p><strong>宏</strong></p></p>
     </article>
 </section>
             <!-- endblock -->
