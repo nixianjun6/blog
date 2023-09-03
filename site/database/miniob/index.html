@@ -260,7 +260,14 @@
 <ul>
 <li>进行内存管理。一次性申请多个页面，减少频繁申请释放内存的开销。</li>
 <li>替换策略。当缓存池满时，对驱逐页面进行判定。</li>
-</ul></p>
+</ul>
+<hr />
+<p><strong>Table and Index</strong></p>
+<p><center>
+  <img alt="miniobtableandindex" src="../../img/miniobtableandindex.png" />
+  <br>
+</center></p>
+<p>Table主要提供make, insert, delete, get, visit_record接口进行对行数据的增删查。也可以通过get_record_scanner得到迭代器进行遍历操作。索引提供了insert, delete, get_entry接口进行增删查。也可以通过create_scanner接口得到索引的迭代器进行遍历操作。</p></p>
     </article>
 </section>
             <!-- endblock -->
