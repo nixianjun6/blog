@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-        <title>Rust - nixianjun6</title>
+        <title>OLAP - nixianjun6</title>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -74,7 +74,7 @@
             </li>
             <li class="drac-box">
                 <a href="../.."
-                    class="
+                    class=" active 
                     drac-anchor btn-toggle d-inline-flex align-items-center border-0 drac-text-purple--hover collapsed"
                     data-bs-toggle="collapse" data-bs-target="#database-collapse" aria-expanded="false">
                     Database
@@ -83,7 +83,7 @@
                     <ul class="mb-5 drac-list drac-list-none">
                             
     <li class="drac-box-ternary">
-        <a href="../../database/cmu15445/"
+        <a href="../cmu15445/"
             class="
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
             cmu15445
@@ -91,7 +91,7 @@
     </li>
                             
     <li class="drac-box-ternary">
-        <a href="../../database/leveldb/"
+        <a href="../leveldb/"
             class="
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
             leveldb
@@ -99,7 +99,7 @@
     </li>
                             
     <li class="drac-box-ternary">
-        <a href="../../database/miniob/"
+        <a href="../miniob/"
             class="
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
             miniob
@@ -107,8 +107,8 @@
     </li>
                             
     <li class="drac-box-ternary">
-        <a href="../../database/olap/"
-            class="
+        <a href="./"
+            class=" active 
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
             OLAP
         </a>
@@ -158,7 +158,7 @@
             </li>
             <li class="drac-box">
                 <a href="../.."
-                    class=" active 
+                    class="
                     drac-anchor btn-toggle d-inline-flex align-items-center border-0 drac-text-purple--hover collapsed"
                     data-bs-toggle="collapse" data-bs-target="#language-collapse" aria-expanded="false">
                     Language
@@ -167,7 +167,7 @@
                     <ul class="mb-5 drac-list drac-list-none">
                             
     <li class="drac-box-ternary">
-        <a href="../C%2B%2B/"
+        <a href="../../language/C%2B%2B/"
             class="
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
             C++
@@ -175,8 +175,8 @@
     </li>
                             
     <li class="drac-box-ternary">
-        <a href="./"
-            class=" active 
+        <a href="../../language/rust/"
+            class="
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
             Rust
         </a>
@@ -212,14 +212,14 @@
         <div class="container">
             <div class="row row-preview">
                 <div class="col">
-                    <a href="../C%2B%2B/"
+                    <a href="../miniob/"
                         class="btn-preview drac-btn drac-btn-outline drac-text-white drac-text-cyan-green--hover">
                         <i class="fa fa-arrow-left"></i> Previous
                     </a>
                 </div>
                 <div class="col">
-                    <a 
-                        class="btn-preview drac-btn drac-text-white--hover disabled" style="padding-left: 3%;">
+                    <a href="../../distributed%20system/mit6.824/"
+                        class="btn-preview drac-btn drac-btn-outline drac-text-white drac-text-cyan-green--hover" style="padding-left: 3%;">
                         Next <i class="fa fa-arrow-right"></i>
                     </a>
                 </div>
@@ -255,73 +255,40 @@
             <!-- block content -->
                 <section class="p-md-5 section-content">
     <article>
-        <p><h1 id="rust">Rust</h1>
-<p>source from <a href="https://github.com/wubx/rust-in-databend">https://github.com/wubx/rust-in-databend</a></p>
-<p>背景：很难编写内存/线程安全的代码。Rust的期望是性能可以和 C/C++ 媲美，还能保证安全性，同时可以提供⾼ 效的开发效率，代码还得容易维护。</p>
-<p>设计思想：安全；并发；高效；零成本抽象。</p>
-<hr />
-<p><strong>所有权</strong></p>
-<p>所有程序在运行时都必须管理它们使用计算机内存的方式。</p>
-<pre><code class="language-rust">fn main() {
-    let name = &quot;Pascal&quot;.to_string();
-    let a = name;
-    let b = name;
-}
-</code></pre>
+        <p><h1 id="olap">OLAP</h1>
+<h2 id="how-query-engines-work">How Query Engines Work</h2>
 <p><center>
-  <img alt="rustowner1" src="../../img/rustowner1.png" />
+  <img alt="logicalPlan" src="../../img/logicalPlan.jpg" />
   <br>
 </center></p>
-<p>如图所示，当把name赋值给a时会将所有权也交给a，导致let b = name报错。</p>
-<pre><code class="language-rust">fn main() {
-    let name = &quot;Pascal&quot;.to_string();
-    let a = name;
-    let b = a.clone();
-}
-</code></pre>
 <p><center>
-  <img alt="rustowner2" src="../../img/rustowner2.png" />
+  <img alt="physicalPlan" src="../../img/physicalPlan.jpg" />
   <br>
 </center></p>
-<p>​   如图所示，使用clone会进行深拷贝。</p>
-<pre><code class="language-rust">fn main() {
-    let name = &quot;Pascal&quot;.to_string();
-    let a = &amp;name;
-    let b = a; // or let b = &amp;name;
-}
-</code></pre>
-<p>​   可以通过&amp;引用，而使name不丢失所有权。</p>
-<hr />
-<p><strong>错误处理</strong></p>
-<p>分类：可恢复（例如文件未找到，可再次尝试）/不可恢复（bug）</p>
-<p>不可恢复的错误与panic!:</p>
+<p>生成的Logical Plan首先经过Query Optimizer优化。主要介绍Rule-Based Optimizations:</p>
 <ul>
-<li>打印错误信息；展开并清理调用栈；退出程序</li>
-<li>也可以在Cargo.toml中设置panic = 'abort'，这样不会展开清理调用栈，直接退出程序。</li>
-<li>可以通过设置环境变量RUST_BACKTRACE得到回溯信息</li>
+<li>Projection push-down:尽快过滤掉列。找到projection, filter, aggregate中需要用到的列。Scan时过滤。</li>
+<li>Predicate push-down:尽快过滤掉行。将fiter在join之前做。</li>
+<li>Eliminate Common Subexpressions</li>
+<li>Converting Correlated Subqueries to Joins</li>
 </ul>
-<p>可恢复错误与Result枚举：</p>
+<p>经过优化后通过Query Planner转换为Physical Plan。</p>
+<p>并行查询执行：</p>
 <ul>
-<li>可以通过unwrap获取ok里的值，错误时会触发panic!。也可以使用expect自定义错误信息。</li>
-<li>可以通过?进行错误的传播。被?应用的错误，会隐式的被from函数处理。</li>
-<li>Box\&lt;dyn Error>是trait对象，简单理解:任何可能的错误类型。</li>
+<li>Combining Results: Map Reduce</li>
+<li>Smarter Partitioning: 负载均衡需要考虑。可以把文件放在目录中，并使用kv对组成的目录名称指定内容。这样可以更早的实现谓词下推，这种方法又叫做"partition pruning".</li>
 </ul>
-<hr />
-<p><strong>生命周期</strong></p>
-<p>引用保持有效的作用域。大部分情况生命周期是隐式的，可被推断的。</p>
-<p>目的：避免悬垂指针。</p>
-<p>生命周期的标注：描述了多个引用生命周期的关系，但不影响生命周期。标注的生命周期的实际生命周期是所有标注的引用生命周期中最小的引用的生命周期。</p>
-<p>什么时候需要生命周期标注：引用分为输入引用和输出引用。输入引用会自动的标注成不同的生命周期，如果只有一个输入引用或者存在self的输入引用那么输出引用的生命周期和单个的输入引用/self的输入引用相同。否则无法判断输出引用，需要自行标注输出引用和输入引用生命周期的关系。</p>
-<hr />
-<p><strong>智能指针</strong></p>
+<p>分布式查询执行：</p>
 <ul>
-<li>Box\&lt;T>:在heap内存上分配值。使用场景：当编译时类型大小无法确定，而使用该类型时，上下文却需要知道其大小；有大量数据移交所有权且不要求复制；使用某个变量时，只关心是否实现了某个trait，而不关心具体类型。</li>
-<li>Rc\&lt;T>:启用多重所有权的引用计数类型。使用场景：需要在heap上分配数据，这些数据被多个部分读取（read-only），但在编译时无法确定哪个部分最后使用完这些数据；只适用于单线程。</li>
-<li>Arc\&lt;T>:与Rc有相同的API，并且可以安全的用于并发环境。</li>
-<li>Cow\&lt;'a, B'>:The type <code>Cow</code> is a smart pointer providing clone-on-write functionality: it can enclose and provide immutable access to borrowed data, and clone the data lazily when mutation or ownership is required.</li>
+<li>Joins：必须首先在连接键上对两个表重新分区，并把分区写入磁盘。</li>
+<li>需要一个查询调度程序：</li>
+<li>生成分布式的Query Plan</li>
+<li>序列化Query Plan</li>
+<li>序列化数据</li>
+<li>选择通信协议</li>
+<li>优化</li>
 </ul>
-<hr />
-<p><strong>宏</strong></p></p>
+<hr /></p>
     </article>
 </section>
             <!-- endblock -->

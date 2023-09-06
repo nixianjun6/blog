@@ -5,6 +5,7 @@ nav:
   - cmu15445: 'database/cmu15445.md'
   - leveldb: 'database/leveldb.md'
   - miniob: 'database/miniob.md'
+  - OLAP: 'database/olap.md'
 - Distributed System:
   - mit6.824: 'distributed system/mit6.824.md'
 - Algorithm:
