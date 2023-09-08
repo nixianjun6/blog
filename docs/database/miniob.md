@@ -19,7 +19,7 @@ BPFrameManager ：向外透明的模块，主要在BufferPool内部调用。主�
 
 ------
 
-**Table and Index**
+## **Table and Index**
 
 <center>
   ![miniobtableandindex](../img/miniobtableandindex.png)
@@ -27,3 +27,24 @@ BPFrameManager ：向外透明的模块，主要在BufferPool内部调用。主�
 </center>
 
 Table主要提供make, insert, delete, get, visit_record接口进行对行数据的增删查。也可以通过get_record_scanner得到迭代器进行遍历操作。索引提供了insert, delete, get_entry接口进行增删查。也可以通过create_scanner接口得到索引的迭代器进行遍历操作。
+
+------
+
+## SQL流程
+
+session stage: 收到客户端的string, 然后进入plan cache stage
+
+plan cache stage: 啥也没做，直接进入parse stage
+
+parse stage: 词法分析 + 语法分析得到Query，然后进入resolve stage
+
+resolve stage: 得到query fields或检查query fields信息。然后进入query cache stage
+
+query cache stage:啥也没做，直接进入optimize stage
+
+optimize stage:啥也没错，直接进入exeute stage
+
+execute stage:构建执行计划，使用火山模型。每个算子都需要实现open, next两个方法。
+
+
+
