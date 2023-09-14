@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-        <title>OLAP - nixianjun6</title>
+        <title>cmu15721 - nixianjun6</title>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -110,7 +110,7 @@
         <a href="./"
             class=" active 
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
-            OLAP
+            cmu15721
         </a>
     </li>
                     </ul>
@@ -255,7 +255,7 @@
             <!-- block content -->
                 <section class="p-md-5 section-content">
     <article>
-        <p><h1 id="olap">OLAP</h1>
+        <p><h1 id="cmu15721">CMU15721</h1>
 <h2 id="how-query-engines-work">How Query Engines Work</h2>
 <p><center>
   <img alt="logicalPlan" src="../../img/logicalPlan.jpg" />
@@ -289,85 +289,7 @@
 <li>优化</li>
 </ul>
 <hr />
-<h2 id="monetdbx100">MonetDB/X100:</h2>
-<p>Motivations: Database systems tend to achieve only low IPC (instructions-per-cycle) efficiency on modern CPUs in compute-intensive application areas like decision support, OLAP and multimedia retrieval.</p>
-<pre><code class="language-sql">SELECT l_returnflag, l_linestatus,
-sum(l_quantity) AS sum_qty,
-sum(l_extendedprice) AS sum_base_price,
-sum(l_extendedprice * (1 - l_discount))
-AS sum_disc_price,
-sum(l_extendedprice * (1 - l_discount) *
-(1 + l_tax)) AS sum_charge,
-avg(l_quantity) AS avg_qty,
-avg(l_extendedprice) AS avg_price,
-avg(l_discount) AS avg_disc,
-count(*) AS count_order
-FROM lineitem
-WHERE l_shipdate &lt;= date ’1998-09-02’
-GROUP BY l_returnflag, l_linestatus
-</code></pre>
-<p>对于TPC-H Query1传统数据库使用的火山模型存在以下问题：</p>
-<ul>
-<li>Highly dependent instructions</li>
-<li>routine call penalty</li>
-</ul>
-<p>对于列存储的数据库MonetDB/MIL，有以下优势：</p>
-<ul>
-<li>Less interpretation overhead(解决上面的问题2)</li>
-<li>More CPU efficiency(一个是因为解决了上面的问题1，列存储可以让编译器在编译阶段知道数据布局，因此可以实现loop-pipelining，另一方面列存也可以更好的cache friendly)</li>
-</ul>
-<p>但是存在以下问题：</p>
-<ul>
-<li>Full materialization penalty。（很多列数据都没用到，增大了内存带宽的消耗）</li>
-</ul>
-<p>X100: A Vectorized Query Processor:</p>
-<p>​   Goals:</p>
-<ul>
-<li>execute high-volume queries at high CPU efficiency</li>
-<li>be extensible to other application domains like data mining and multi-media retrieval, and achieve those same high efficiencies on extensibility code, and</li>
-<li>scale with the size of the lowest storage hierarchy (disk).</li>
-</ul>
-<p>​   Design:</p>
-<ul>
-<li>Disk: geared towards efficient sequential data access; vertically fragmented data layout(enhanced with lightweight data compression)</li>
-<li>RAM: The same vertically partitioned and even compressed disk data layout is used in RAM to save space and bandwidth.</li>
-<li>Cache: Small (e.g. 1000 values) vertical chunks of cache-resident data items, called “vectors” are the unit of operation for X100 execution primitives; (de)compression happens on the boundary between RAM and cache; cacheconscious and fragment huge datasets efficiently into cache-chunks and perform random data access only there.</li>
-<li>CPU: vectorized primitives expose to the compiler that processing a tuple is independent of the previous and next tuples.</li>
-</ul>
-<p>​   Query Language:</p>
-<pre><code class="language-sql">Aggr(
-    Project(
-        Select(
-        Table(lineitem),
-        &lt; (shipdate, date(’1998-09-03’))),
-    [ discountprice = *( -( flt(’1.0’), discount),
-        extendedprice) ]),
-[ returnflag ],
-[ sum_disc_price = sum(discountprice) ])
-</code></pre>
-<p><center>
-  <img alt="monetdbx100Q1" src="../../img/monetdbx100Q1.png" />
-  <br>
-</center></p>
-<p>​   Vectorized Primitives:</p>
-<ul>
-<li>This allows it to apply aggressive loop pipelining. </li>
-<li>允许传入向量参数</li>
-<li>由原子范式生成（同类型运算），map signature requests生成（单值与列计算）</li>
-</ul>
-<p>​   Data Storage:</p>
-<ul>
-<li>更新成本增加，每一列执行一次I/O: 改为增量结构(见下图，更新可以理解为删除+插入，当表的增量达到一定程度时重新整理)</li>
-<li>节省内存带宽，通过数据压缩可以进一步减少。</li>
-</ul>
-<p><center>
-  <img alt="verticalupdate" src="../../img/verticalupdate.png" />
-  <br>
-</center>   </p>
-<p>​   Vector size impact:</p>
-<ul>
-<li>fit cache is best!</li>
-</ul></p>
+<h2 id="in-memory-database">In Memory Database</h2></p>
     </article>
 </section>
             <!-- endblock -->
