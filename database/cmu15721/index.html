@@ -326,7 +326,50 @@
 <p><center>
   <img alt="concurrencybottleneck" src="../../img/concurrencybottleneck.png" />
   <br>
-</center></p></p>
+</center></p>
+<hr />
+<h2 id="mvccdesign-decisions">MVCC(Design Decisions)</h2>
+<ul>
+<li><strong>An Empirical Evaluation of In-Memory Multi-Version Concurrency Control</strong></li>
+</ul>
+<p><strong>Motivation:</strong>MVCC在当今的数据库中广泛运用，但是有许多的设计选择可以实现MVCC。直到现在，没有对多核的in-memory数据库全面的评估各种设计选择下MVCC的性能。本文对MVCC DBMS中关键事务管理设计决策进行了研究：1）并发控制协议，2）版本存储，3）垃圾收集，4）索引管理</p>
+<p><strong>MVCC:</strong>好处是读写不会相互阻塞，并且有时间旅行的功能。写写冲突时，先写的获胜，后写的事务abort。Snapshot isolation(SI)不是串行化的原因是因为会造成Write Skew Anomaly。（如何 Serialization？）</p>
+<p><strong>Meta-Data:</strong> 每个事务进入系统会分配一个Tid。每个Tuple的Header一般包括txn-id(用于上锁并发控制事务), begin-ts（有效范围，如果删除了就是INF）, end-ts, pointer（相邻版本的地址）。</p>
+<p><strong>并发控制协议：</strong></p>
+<p><center>
+  <img alt="MVTO" src="../../img/MVTO.png" />
+  <br>
+</center></p>
+<p><center>
+  <img alt="MVTO" src="../../img/MV2PL.png" />
+  <br>
+</center></p>
+<p>txn id wraparound: Set a flag in each tuple header that says that it is "frozen" in the past. Any new txn id will always be newer than a frozen version.</p>
+<p><strong>Version storage:</strong></p>
+<ul>
+<li>Append-only:每次更新都在表空闲空间追加tuple一个新的版本。（Oldest-to-Newest:利于写，Newest to Oldest:利于读）</li>
+<li>Time-travel:每次更新，将现版本移动到time travel表上，重新主表内容并更新指针。</li>
+<li>Delta storage:每次更新只复制值到delta storage中并重写主表内容，可以通过进行相反的增量得到老版本。</li>
+</ul>
+<p>​   non-inline attributes: 多版本可以重用指针。需要进行引用计数。</p>
+<p><strong>Garbage collection:</strong></p>
+<ul>
+<li>Tuple-level gc:Background Vacuuming（单独开一个线程定时清理过期版本。），Cooperative Cleaning（当遍历版本时清理过期的，只适用于O2N）</li>
+<li>Transaction-level gc：当一个事务对其他事务不可见时，该事务生成的版本都可以被安全释放。</li>
+</ul>
+<p><strong>Index Manager:</strong></p>
+<ul>
+<li>Logical Pointers</li>
+<li>Physical Pointers</li>
+</ul>
+<p>MVCC DBMS indexes一般不存version信息。每个索引需要支持来自不同版本的重复keys。</p>
+<p><strong>Discussion:</strong></p>
+<ul>
+<li>Version stage对性能影响非常重要。Append-only和Time Travel非常依赖于底层内存分配方案效率，而Delta则都能保持一个较高的性能。但是Delta表扫描性能较低。</li>
+<li>MVTO在多种工作负载情况下表现就好。</li>
+<li>a transaction-level GC provided the best performance with the smallest memory footprint.</li>
+<li>logical pointer scheme永远更好。</li>
+</ul></p>
     </article>
 </section>
             <!-- endblock -->
