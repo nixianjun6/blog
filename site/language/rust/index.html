@@ -321,7 +321,29 @@
 <li>Cow\&lt;'a, B'>:The type <code>Cow</code> is a smart pointer providing clone-on-write functionality: it can enclose and provide immutable access to borrowed data, and clone the data lazily when mutation or ownership is required.</li>
 </ul>
 <hr />
-<p><strong>宏</strong></p></p>
+<p><strong>宏</strong></p>
+<p>宏的目的是为了进行语法扩展。不同于C++的宏是在词法分析阶段进行展开，Rust的宏是在语法分析阶段进行展开的。</p>
+<p>下面有一个例子，来源于<a href="https://zhuanlan.zhihu.com/p/342408254">zhihu</a></p>
+<pre><code>// C++
+#define sqr(x) (x * x)
+
+//Rust
+macro_rules! sqr {
+    ($x:expr) =&gt; {$x * $x}
+}
+
+sqr(1 + 1)
+// C++
+3
+// Rust
+4
+</code></pre>
+<p><strong>派生宏：</strong></p>
+<p>只能用于struct, enum和union。通过调用#[derive(xxx)]生效，在目标代码块下添加代码。</p>
+<p><strong>函数式宏：</strong></p>
+<p>实现自定义语法规则</p>
+<p><strong>属性宏：</strong></p>
+<p>相比于派生宏可以用于更多对象，包括函数,impl块,mod块,trait块等等。通过调用#[xxx(yyy, zzz, ...)]生效，可以替换，删除，新增代码。</p></p>
     </article>
 </section>
             <!-- endblock -->
