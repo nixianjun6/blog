@@ -6,6 +6,7 @@ nav:
   - leveldb: 'database/leveldb.md'
   - miniob: 'database/miniob.md'
   - cmu15721: 'database/cmu15721.md'
+  - databend: 'database/databend.md'
 - Distributed System:
   - mit6.824: 'distributed system/mit6.824.md'
 - Algorithm:

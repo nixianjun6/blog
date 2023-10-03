@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-        <title>Rust - nixianjun6</title>
+        <title>databend - nixianjun6</title>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -74,7 +74,7 @@
             </li>
             <li class="drac-box">
                 <a href="../.."
-                    class="
+                    class=" active 
                     drac-anchor btn-toggle d-inline-flex align-items-center border-0 drac-text-purple--hover collapsed"
                     data-bs-toggle="collapse" data-bs-target="#database-collapse" aria-expanded="false">
                     Database
@@ -83,7 +83,7 @@
                     <ul class="mb-5 drac-list drac-list-none">
                             
     <li class="drac-box-ternary">
-        <a href="../../database/cmu15445/"
+        <a href="../cmu15445/"
             class="
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
             cmu15445
@@ -91,7 +91,7 @@
     </li>
                             
     <li class="drac-box-ternary">
-        <a href="../../database/leveldb/"
+        <a href="../leveldb/"
             class="
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
             leveldb
@@ -99,7 +99,7 @@
     </li>
                             
     <li class="drac-box-ternary">
-        <a href="../../database/miniob/"
+        <a href="../miniob/"
             class="
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
             miniob
@@ -107,7 +107,7 @@
     </li>
                             
     <li class="drac-box-ternary">
-        <a href="../../database/cmu15721/"
+        <a href="../cmu15721/"
             class="
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
             cmu15721
@@ -115,8 +115,8 @@
     </li>
                             
     <li class="drac-box-ternary">
-        <a href="../../database/databend/"
-            class="
+        <a href="./"
+            class=" active 
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
             databend
         </a>
@@ -166,7 +166,7 @@
             </li>
             <li class="drac-box">
                 <a href="../.."
-                    class=" active 
+                    class="
                     drac-anchor btn-toggle d-inline-flex align-items-center border-0 drac-text-purple--hover collapsed"
                     data-bs-toggle="collapse" data-bs-target="#language-collapse" aria-expanded="false">
                     Language
@@ -175,7 +175,7 @@
                     <ul class="mb-5 drac-list drac-list-none">
                             
     <li class="drac-box-ternary">
-        <a href="../C%2B%2B/"
+        <a href="../../language/C%2B%2B/"
             class="
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
             C++
@@ -183,8 +183,8 @@
     </li>
                             
     <li class="drac-box-ternary">
-        <a href="./"
-            class=" active 
+        <a href="../../language/rust/"
+            class="
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
             Rust
         </a>
@@ -220,14 +220,14 @@
         <div class="container">
             <div class="row row-preview">
                 <div class="col">
-                    <a href="../C%2B%2B/"
+                    <a href="../cmu15721/"
                         class="btn-preview drac-btn drac-btn-outline drac-text-white drac-text-cyan-green--hover">
                         <i class="fa fa-arrow-left"></i> Previous
                     </a>
                 </div>
                 <div class="col">
-                    <a 
-                        class="btn-preview drac-btn drac-text-white--hover disabled" style="padding-left: 3%;">
+                    <a href="../../distributed%20system/mit6.824/"
+                        class="btn-preview drac-btn drac-btn-outline drac-text-white drac-text-cyan-green--hover" style="padding-left: 3%;">
                         Next <i class="fa fa-arrow-right"></i>
                     </a>
                 </div>
@@ -263,95 +263,237 @@
             <!-- block content -->
                 <section class="p-md-5 section-content">
     <article>
-        <p><h1 id="rust">Rust</h1>
-<p>source from <a href="https://github.com/wubx/rust-in-databend">https://github.com/wubx/rust-in-databend</a></p>
-<p>背景：很难编写内存/线程安全的代码。Rust的期望是性能可以和 C/C++ 媲美，还能保证安全性，同时可以提供⾼ 效的开发效率，代码还得容易维护。</p>
-<p>设计思想：安全；并发；高效；零成本抽象。</p>
-<hr />
-<p><strong>所有权</strong></p>
-<p>所有程序在运行时都必须管理它们使用计算机内存的方式。</p>
-<pre><code class="language-rust">fn main() {
-    let name = &quot;Pascal&quot;.to_string();
-    let a = name;
-    let b = name;
-}
-</code></pre>
-<p><center>
-  <img alt="rustowner1" src="../../img/rustowner1.png" />
-  <br>
-</center></p>
-<p>如图所示，当把name赋值给a时会将所有权也交给a，导致let b = name报错。</p>
-<pre><code class="language-rust">fn main() {
-    let name = &quot;Pascal&quot;.to_string();
-    let a = name;
-    let b = a.clone();
-}
-</code></pre>
-<p><center>
-  <img alt="rustowner2" src="../../img/rustowner2.png" />
-  <br>
-</center></p>
-<p>​   如图所示，使用clone会进行深拷贝。</p>
-<pre><code class="language-rust">fn main() {
-    let name = &quot;Pascal&quot;.to_string();
-    let a = &amp;name;
-    let b = a; // or let b = &amp;name;
-}
-</code></pre>
-<p>​   可以通过&amp;引用，而使name不丢失所有权。</p>
-<hr />
-<p><strong>错误处理</strong></p>
-<p>分类：可恢复（例如文件未找到，可再次尝试）/不可恢复（bug）</p>
-<p>不可恢复的错误与panic!:</p>
+        <p><h1 id="databend">Databend</h1>
+<h2 id="contexts">contexts:</h2>
+<p>主要用于加载选项设置，数据源与查询统计信息。</p>
 <ul>
-<li>打印错误信息；展开并清理调用栈；退出程序</li>
-<li>也可以在Cargo.toml中设置panic = 'abort'，这样不会展开清理调用栈，直接退出程序。</li>
-<li>可以通过设置环境变量RUST_BACKTRACE得到回溯信息</li>
+<li>Settings: 设置某个变量的类型，支持的类型包括：u64, i6, f64和string。支持的操作包括：set(设置value, default value和description), update(更新value), get(获取value)</li>
+<li>Options:设置了log_level, num_cpus, mysql_listrn_host, mysql_handler_port, mysql_handler_thread_num的变量类型，value以及description。</li>
+<li>FuseQueryContext: 设置了max_threads, max_block_size, default_db的变量类型，value以及description。</li>
 </ul>
-<p>可恢复错误与Result枚举：</p>
-<ul>
-<li>可以通过unwrap获取ok里的值，错误时会触发panic!。也可以使用expect自定义错误信息。</li>
-<li>可以通过?进行错误的传播。被?应用的错误，会隐式的被from函数处理。</li>
-<li>Box\&lt;dyn Error>是trait对象，简单理解:任何可能的错误类型。</li>
-</ul>
-<hr />
-<p><strong>生命周期</strong></p>
-<p>引用保持有效的作用域。大部分情况生命周期是隐式的，可被推断的。</p>
-<p>目的：避免悬垂指针。</p>
-<p>生命周期的标注：描述了多个引用生命周期的关系，但不影响生命周期。标注的生命周期的实际生命周期是所有标注的引用生命周期中最小的引用的生命周期。</p>
-<p>什么时候需要生命周期标注：引用分为输入引用和输出引用。输入引用会自动的标注成不同的生命周期，如果只有一个输入引用或者存在self的输入引用那么输出引用的生命周期和单个的输入引用/self的输入引用相同。否则无法判断输出引用，需要自行标注输出引用和输入引用生命周期的关系。</p>
-<hr />
-<p><strong>智能指针</strong></p>
-<ul>
-<li>Box\&lt;T>:在heap内存上分配值。使用场景：当编译时类型大小无法确定，而使用该类型时，上下文却需要知道其大小；有大量数据移交所有权且不要求复制；使用某个变量时，只关心是否实现了某个trait，而不关心具体类型。</li>
-<li>Rc\&lt;T>:启用多重所有权的引用计数类型。使用场景：需要在heap上分配数据，这些数据被多个部分读取（read-only），但在编译时无法确定哪个部分最后使用完这些数据；只适用于单线程。</li>
-<li>Arc\&lt;T>:与Rc有相同的API，并且可以安全的用于并发环境。</li>
-<li>Cow\&lt;'a, B'>:The type <code>Cow</code> is a smart pointer providing clone-on-write functionality: it can enclose and provide immutable access to borrowed data, and clone the data lazily when mutation or ownership is required.</li>
-</ul>
-<hr />
-<p><strong>宏</strong></p>
-<p>宏的目的是为了进行语法扩展。不同于C++的宏是在词法分析阶段进行展开，Rust的宏是在语法分析阶段进行展开的。</p>
-<p>下面有一个例子，来源于<a href="https://zhuanlan.zhihu.com/p/342408254">zhihu</a></p>
-<pre><code>// C++
-#define sqr(x) (x * x)
-
-//Rust
-macro_rules! sqr {
-    ($x:expr) =&gt; {$x * $x}
+<pre><code class="language-rust">pub struct FuseQueryContext {
+    datasource: Arc&lt;Mutex&lt;dyn IDataSource&gt;&gt;,
+    statistics: Mutex&lt;Statistics&gt;,
+    settings: Settings,
 }
 
-sqr(1 + 1)
-// C++
-3
-// Rust
-4
+pub type FuseQueryContextRef = Arc&lt;FuseQueryContext&gt;;
 </code></pre>
-<p><strong>派生宏：</strong></p>
-<p>只能用于struct, enum和union。通过调用#[derive(xxx)]生效，在目标代码块下添加代码。</p>
-<p><strong>函数式宏：</strong></p>
-<p>实现自定义语法规则</p>
-<p><strong>属性宏：</strong></p>
-<p>相比于派生宏可以用于更多对象，包括函数,impl块,mod块,trait块等等。通过调用#[xxx(yyy, zzz, ...)]生效，可以替换，删除，新增代码。</p></p>
+<hr />
+<h2 id="datasources">datasources:</h2>
+<p>这一层抽象是为了更好实现不同类型文件的读取。</p>
+<ul>
+<li>DataSource:实现IDataSource特征（add_database, check_database, add_table, get_table）。初始化时会注册一个叫system的database。</li>
+<li>ITable: 特征。需要实现name, schema, read_plan和read的函数。</li>
+<li>Statistics：统计读取的函数和字节信息。</li>
+</ul>
+<pre><code class="language-rust">pub struct DataSource {
+    databases: HashMap&lt;String, HashMap&lt;String, Arc&lt;dyn ITable&gt;&gt;&gt;,
+}
+
+#[async_trait]
+pub trait ITable: Sync + Send {
+    fn name(&amp;self) -&gt; &amp;str;
+
+    fn schema(&amp;self) -&gt; FuseQueryResult&lt;DataSchemaRef&gt;;
+
+    fn read_plan(
+        &amp;self,
+        ctx: FuseQueryContextRef,
+        push_down_plan: PlanNode,
+    ) -&gt; FuseQueryResult&lt;ReadDataSourcePlan&gt;;
+
+    async fn read(
+        &amp;self,
+        ctx: FuseQueryContextRef,
+        parts: Vec&lt;Partition&gt;,
+    ) -&gt; FuseQueryResult&lt;SendableDataBlockStream&gt;;
+}
+
+#[derive(Clone, Debug)]
+pub struct Partition {
+    pub name: String,
+    pub version: u64,
+}
+</code></pre>
+<hr />
+<h2 id="datavalues">datavalues</h2>
+<p>对列向量进行抽象。</p>
+<ul>
+<li>DataSchema为arrow::datatypes::Schema, DataSchemaRef为arrow::datatypes::SchemaRef,</li>
+<li>DataType用的是arrow::datatypes::DataType。实现了数字类型变量的强制转换。</li>
+<li>DataField为arrow::datatypes::Field</li>
+<li>DataArray: 向量。DataArrayRef为arrow::array::ArrayRef。</li>
+<li>DataValue: 标量。 能与DataArray, rust标准类型，DataType相互转换。实现了算术运算与聚合运算。</li>
+<li>DataColumnarValue:实现了And与Or的逻辑运算，比较运算，算术运算，聚合运算。（如果操作对象是标量则转换为向量）</li>
+</ul>
+<pre><code class="language-rust">#[derive(Clone, Debug)]
+pub enum DataColumnarValue {
+    // Array of values.
+    Array(DataArrayRef),
+    // A Single value.
+    Scalar(DataValue),
+}
+</code></pre>
+<hr />
+<h2 id="datablocks">datablocks:</h2>
+<p>对多行列向量进行抽象。</p>
+<p>​   能与arrow::record_batch::RecordBatch相互转换。</p>
+<pre><code class="language-rust">#[derive(Debug, Clone)]
+pub struct DataBlock {
+    schema: DataSchemaRef,
+    columns: Vec&lt;DataArrayRef&gt;,
+}
+</code></pre>
+<hr />
+<h2 id="servers">servers:</h2>
+<ul>
+<li>Session: 目前实现了on_query，首先根据输入的sql语句与contexts通过build_from_sql方法生成查询计划。然后由ExecutorFactory根据查询计划与contexts生成物理查询计划executor。然后调用executor.execute()得到最后结果。</li>
+<li>MySQLHandler: 启动服务。</li>
+<li>MySQLStream: 输出格式。</li>
+</ul>
+<pre><code class="language-rust">struct Session {
+    ctx: FuseQueryContextRef,
+}
+
+pub struct MySQLHandler {
+    opts: Options,
+    datasource: Arc&lt;Mutex&lt;dyn IDataSource&gt;&gt;,
+}
+
+pub struct MySQLStream {
+    blocks: Vec&lt;DataBlock&gt;,
+}
+</code></pre>
+<hr />
+<h2 id="planners">planners:</h2>
+<p>主要用于生成逻辑查询计划。</p>
+<ul>
+<li>plan_parser: build_from_sql首先将sql语句转换为statements(暂时只支持Query与SetVariable, 通过DFParser实现)。对于Query statements，按having -&gt; from-&gt; filter-&gt; projection -&gt; aggr -&gt; limit生成计划(主要通过PlanBuilder生成PlanNode, 在处理from时，会进一步调用table.read_plan生成ReadSource的PlanNode)。对于表达式，通过sql_to_rex生成ExpressionPlan。</li>
+</ul>
+<pre><code class="language-rust">#[derive(Clone)]
+pub enum PlanNode {
+    Empty(EmptyPlan),
+    Projection(ProjectionPlan),
+    Aggregate(AggregatePlan),
+    Filter(FilterPlan),
+    Limit(LimitPlan),
+    Scan(ScanPlan),
+    ReadSource(ReadDataSourcePlan),
+    Explain(ExplainPlan),
+    Select(SelectPlan),
+    SetVariable(SettingPlan),
+}
+
+#[derive(Clone)]
+pub enum ExpressionPlan {
+    Alias(String, Box&lt;ExpressionPlan&gt;),
+    Field(String),
+    Constant(DataValue),
+    BinaryExpression {
+        left: Box&lt;ExpressionPlan&gt;,
+        op: String,
+        right: Box&lt;ExpressionPlan&gt;,
+    },
+    Function {
+        op: String,
+        args: Vec&lt;ExpressionPlan&gt;,
+    },
+    Wildcard,
+}
+</code></pre>
+<hr />
+<h2 id="executors">executors:</h2>
+<p>由于查询计划可能需要优化，而其他执行计划可能不需要，因此需要这样一层。</p>
+<ul>
+<li>ExecutorFactory: 将PlanNode转换为IExecutor。对于SelectExecutor来说，会首先调用Optimizer::create().optimize得到优化后的PlanNode。然后调用PipelineBuilder执行计划。</li>
+</ul>
+<hr />
+<h2 id="optimizers">Optimizers:</h2>
+<p>主要用于对逻辑查询计划的优化。</p>
+<ul>
+<li>Optimizer: 调用create添加需要应用的优化规则。再调用optimize按顺序优化查询计划。目前实现的filter_push_down只完成了projection算子中的别名表达式替换。</li>
+</ul>
+<pre><code class="language-rust">pub trait IOptimizer {
+    fn name(&amp;self) -&gt; &amp;str;
+    fn optimize(&amp;mut self, plan: &amp;PlanNode) -&gt; FuseQueryResult&lt;PlanNode&gt;;
+}
+
+pub struct Optimizer {
+    optimizers: Vec&lt;Box&lt;dyn IOptimizer&gt;&gt;,
+}
+</code></pre>
+<hr />
+<h2 id="processors">processors:</h2>
+<p>主要用于构建进程之间的执行顺序。</p>
+<ul>
+<li>对于ReadSource的PlanNode, 会将输入进行分区，对于每个分区产生一个物理执行计划，之后可能会依次进行filter, projection, aggregate和limit。其中aggregate和Limit时pipeline breaker，通过调用merge_processor来进行等待之前所有进程的完成。</li>
+</ul>
+<pre><code class="language-rust">#[async_trait]
+pub trait IProcessor: Sync + Send {
+    /// Processor name.
+    fn name(&amp;self) -&gt; &amp;str;
+
+    /// Connect to the input processor, add an edge on the DAG.
+    fn connect_to(&amp;mut self, input: Arc&lt;dyn IProcessor&gt;) -&gt; FuseQueryResult&lt;()&gt;;
+
+    /// Execute the processor.
+    async fn execute(&amp;self) -&gt; FuseQueryResult&lt;SendableDataBlockStream&gt;;
+
+    /// Format the processor.
+    fn format(
+        &amp;self,
+        f: &amp;mut std::fmt::Formatter,
+        setting: &amp;mut FormatterSettings,
+    ) -&gt; std::fmt::Result {
+        if setting.indent &gt; 0 {
+            writeln!(f)?;
+            for _ in 0..setting.indent {
+                write!(f, &quot;{}&quot;, setting.indent_char)?;
+            }
+        }
+        write!(
+            f,
+            &quot;{} {} × {} {}&quot;,
+            setting.prefix,
+            self.name(),
+            setting.ways,
+            if setting.ways == 1 {
+                &quot;processor&quot;
+            } else {
+                &quot;processors&quot;
+            },
+        )
+    }
+}
+
+pub type Pipe = Vec&lt;Arc&lt;dyn IProcessor&gt;&gt;;
+
+pub struct Pipeline {
+    processors: Vec&lt;Pipe&gt;,
+}
+</code></pre>
+<hr />
+<h2 id="functions">functions:</h2>
+<p>主要用于对向量真正进行运算。</p>
+<p>每个functions通过eval方法得到DataColumnarValue。其中聚合函数需要实现accumulate方法将结果存储在self.state中，merge方法会把同一深度的self.state进行聚合。</p>
+<ul>
+<li>FunctionFactory: 通过get方法产生算数，比较，逻辑，聚合以及UDF Function</li>
+</ul>
+<hr />
+<h2 id="transforms">transforms:</h2>
+<p>主要用于实现对每个DataBlock的物理查询计划执行。</p>
+<ul>
+<li>source: 调用table.read进行分区的读取。</li>
+<li>每个进程通过transforms实现executor方法，transforms会将表达式转换为functions，并实现expression_executor方法(对每个datablock执行functions的eval操作并生成新的DataBlock）。然后将functions和expression_executor方法传给datastream进行执行。</li>
+</ul>
+<hr />
+<h2 id="datastreams">datastreams:</h2>
+<p>将数据流划分成数据块进行执行。</p>
+<pre><code class="language-rust">pub type SendableDataBlockStream = std::pin::Pin&lt;
+    Box&lt;dyn futures::stream::Stream&lt;Item = FuseQueryResult&lt;DataBlock&gt;&gt; + Sync + Send&gt;,
+&gt;;
+</code></pre></p>
     </article>
 </section>
             <!-- endblock -->
