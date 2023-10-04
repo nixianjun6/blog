@@ -264,28 +264,98 @@
                 <section class="p-md-5 section-content">
     <article>
         <p><h1 id="databend">Databend</h1>
-<h2 id="contexts">contexts:</h2>
-<p>主要用于加载选项设置，数据源与查询统计信息。</p>
+<h2 id="configs">configs:</h2>
+<p>主要用于加载选项设置，重构了之前的Options。</p>
+<pre><code class="language-rust">#[derive(Debug, StructOpt, Clone)]
+pub struct Config {
+    #[structopt(default_value = &quot;Unknown&quot;)]
+    pub version: String,
+
+    #[structopt(long, default_value = &quot;debug&quot;)]
+    pub log_level: String,
+
+    #[structopt(long, default_value = &quot;0&quot;)]
+    pub num_cpus: u64,
+
+    #[structopt(long, default_value = &quot;127.0.0.1&quot;)]
+    pub mysql_handler_host: String,
+
+    #[structopt(long, default_value = &quot;3307&quot;)]
+    pub mysql_handler_port: u64,
+
+    #[structopt(long, default_value = &quot;256&quot;)]
+    pub mysql_handler_thread_num: u64,
+
+    #[structopt(long, default_value = &quot;127.0.0.1:9090&quot;)]
+    pub rpc_api_address: String,
+
+    #[structopt(long, default_value = &quot;127.0.0.1:8080&quot;)]
+    pub http_api_address: String,
+
+    #[structopt(long, default_value = &quot;127.0.0.1:7070&quot;)]
+    pub metric_api_address: String,
+}
+</code></pre>
+<hr />
+<h2 id="clusters">clusters:</h2>
+<p>集群的抽象，记录了节点名字与节点相关信息的映射。</p>
+<pre><code class="language-rust">#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
+pub struct Node {
+    pub name: String,
+    pub cpus: usize,
+    pub address: String,
+}
+</code></pre>
+<hr />
+<h2 id="sessions">sessions:</h2>
+<p>原来的contexts把options功能解耦。记录context uuid与context的映射关系。</p>
 <ul>
 <li>Settings: 设置某个变量的类型，支持的类型包括：u64, i6, f64和string。支持的操作包括：set(设置value, default value和description), update(更新value), get(获取value)</li>
-<li>Options:设置了log_level, num_cpus, mysql_listrn_host, mysql_handler_port, mysql_handler_thread_num的变量类型，value以及description。</li>
-<li>FuseQueryContext: 设置了max_threads, max_block_size, default_db的变量类型，value以及description。</li>
+<li>FuseQueryContext: 设置了max_threads, max_block_size, default_db的变量类型，value以及description。把原来的partition_queue从iTable中解耦到context中，并新增了uuid和cluster属性以支持分布式查询。</li>
 </ul>
-<pre><code class="language-rust">pub struct FuseQueryContext {
-    datasource: Arc&lt;Mutex&lt;dyn IDataSource&gt;&gt;,
-    statistics: Mutex&lt;Statistics&gt;,
+<pre><code class="language-rust">#[derive(Clone)]
+pub struct FuseQueryContext {
+    uuid: Arc&lt;Mutex&lt;String&gt;&gt;,
     settings: Settings,
+    cluster: Arc&lt;Mutex&lt;ClusterRef&gt;&gt;,
+    datasource: Arc&lt;Mutex&lt;dyn IDataSource&gt;&gt;,
+    statistics: Arc&lt;Mutex&lt;Statistics&gt;&gt;,
+    partition_queue: Arc&lt;Mutex&lt;VecDeque&lt;Partition&gt;&gt;&gt;,
 }
 
-pub type FuseQueryContextRef = Arc&lt;FuseQueryContext&gt;;
+pub struct Session {
+    sessions: Mutex&lt;HashMap&lt;String, FuseQueryContextRef&gt;&gt;,
+}
+</code></pre>
+<hr />
+<h2 id="servers">servers:</h2>
+<ul>
+<li>Session（与上一部分的Session不同，与上一版本的Session相同）: 目前实现了on_query，首先根据输入的sql语句与contexts通过build_from_sql方法生成查询计划。然后由InterpreterFactory根据查询计划与contexts生成物理查询计划executor。然后调用executor.execute()得到最后结果。并通过mysql stream发送给客户端。</li>
+<li>MySQLHandler: 启动服务。</li>
+<li>MySQLStream: 输出格式。</li>
+</ul>
+<pre><code class="language-rust">struct Session {
+    ctx: FuseQueryContextRef,
+}
+
+pub struct MySQLHandler {
+    conf: Config,
+    cluster: ClusterRef,
+    session_manager: SessionRef,
+}
+
+pub struct MySQLStream {
+    blocks: Vec&lt;DataBlock&gt;,
+}
 </code></pre>
 <hr />
 <h2 id="datasources">datasources:</h2>
 <p>这一层抽象是为了更好实现不同类型文件的读取。</p>
 <ul>
-<li>DataSource:实现IDataSource特征（add_database, check_database, add_table, get_table）。初始化时会注册一个叫system的database。</li>
+<li>DataSource:实现IDataSource特征（add_database, check_database, add_table, get_table, list_database_tables）。初始化时会注册system， local,  remote三个database。</li>
 <li>ITable: 特征。需要实现name, schema, read_plan和read的函数。</li>
 <li>Statistics：统计读取的函数和字节信息。</li>
+<li>TableFactory: 创建Table的抽象。</li>
 </ul>
 <pre><code class="language-rust">pub struct DataSource {
     databases: HashMap&lt;String, HashMap&lt;String, Arc&lt;dyn ITable&gt;&gt;&gt;,
@@ -294,6 +364,7 @@ pub type FuseQueryContextRef = Arc&lt;FuseQueryContext&gt;;
 #[async_trait]
 pub trait ITable: Sync + Send {
     fn name(&amp;self) -&gt; &amp;str;
+    fn engine(&amp;self) -&gt; &amp;str;
 
     fn schema(&amp;self) -&gt; FuseQueryResult&lt;DataSchemaRef&gt;;
 
@@ -303,11 +374,7 @@ pub trait ITable: Sync + Send {
         push_down_plan: PlanNode,
     ) -&gt; FuseQueryResult&lt;ReadDataSourcePlan&gt;;
 
-    async fn read(
-        &amp;self,
-        ctx: FuseQueryContextRef,
-        parts: Vec&lt;Partition&gt;,
-    ) -&gt; FuseQueryResult&lt;SendableDataBlockStream&gt;;
+    async fn read(&amp;self, ctx: FuseQueryContextRef) -&gt; FuseQueryResult&lt;SendableDataBlockStream&gt;;
 }
 
 #[derive(Clone, Debug)]
@@ -346,73 +413,84 @@ pub struct DataBlock {
 }
 </code></pre>
 <hr />
-<h2 id="servers">servers:</h2>
+<h2 id="sql">sql:</h2>
 <ul>
-<li>Session: 目前实现了on_query，首先根据输入的sql语句与contexts通过build_from_sql方法生成查询计划。然后由ExecutorFactory根据查询计划与contexts生成物理查询计划executor。然后调用executor.execute()得到最后结果。</li>
-<li>MySQLHandler: 启动服务。</li>
-<li>MySQLStream: 输出格式。</li>
+<li>PlanParse: 从原来的planners中解耦出来。build_from_sql首先将sql语句转换为DFStatements(通过DFParser实现)。对于Statement::Query，按having -&gt; from-&gt; filter-&gt; projection -&gt; aggr -&gt; limit生成计划(主要通过PlanBuilder生成PlanNode)</li>
+<li>在处理from时，会进一步调用table.read_plan生成ReadSource的PlanNode)。</li>
+<li>在生成projection计划时，会先调用planRewrite来重写别名。</li>
+<li>在生成aggr计划时，会生成aggregate_partial, stage(类似于mapreduce中的shuffle), aggregate_final三个计划。</li>
+<li>对于表达式，通过sql_to_rex生成ExpressionPlan。</li>
 </ul>
-<pre><code class="language-rust">struct Session {
-    ctx: FuseQueryContextRef,
-}
-
-pub struct MySQLHandler {
-    opts: Options,
-    datasource: Arc&lt;Mutex&lt;dyn IDataSource&gt;&gt;,
-}
-
-pub struct MySQLStream {
-    blocks: Vec&lt;DataBlock&gt;,
+<pre><code class="language-rust">pub enum DFStatement {
+    /// ANSI SQL AST node
+    Statement(SQLStatement),
+    /// Extension: `EXPLAIN &lt;SQL&gt;`
+    Explain(DFExplainPlan),
+    Create(FuseCreateTable),
+    ShowTables(FuseShowTables),
+    ShowSettings(FuseShowSettings),
 }
 </code></pre>
 <hr />
 <h2 id="planners">planners:</h2>
 <p>主要用于生成逻辑查询计划。</p>
-<ul>
-<li>plan_parser: build_from_sql首先将sql语句转换为statements(暂时只支持Query与SetVariable, 通过DFParser实现)。对于Query statements，按having -&gt; from-&gt; filter-&gt; projection -&gt; aggr -&gt; limit生成计划(主要通过PlanBuilder生成PlanNode, 在处理from时，会进一步调用table.read_plan生成ReadSource的PlanNode)。对于表达式，通过sql_to_rex生成ExpressionPlan。</li>
-</ul>
 <pre><code class="language-rust">#[derive(Clone)]
 pub enum PlanNode {
     Empty(EmptyPlan),
+    Stage(StagePlan),
     Projection(ProjectionPlan),
-    Aggregate(AggregatePlan),
+    AggregatorPartial(AggregatorPartialPlan),
+    AggregatorFinal(AggregatorFinalPlan),
     Filter(FilterPlan),
     Limit(LimitPlan),
     Scan(ScanPlan),
     ReadSource(ReadDataSourcePlan),
     Explain(ExplainPlan),
     Select(SelectPlan),
+    Create(CreatePlan),
     SetVariable(SettingPlan),
 }
 
 #[derive(Clone)]
 pub enum ExpressionPlan {
+    /// An expression with a alias name.
     Alias(String, Box&lt;ExpressionPlan&gt;),
-    Field(String),
-    Constant(DataValue),
+    /// Column name.
+    Column(String),
+    /// Constant value.
+    Literal(DataValue),
+    /// A binary expression such as &quot;age &gt; 40&quot;
     BinaryExpression {
         left: Box&lt;ExpressionPlan&gt;,
         op: String,
         right: Box&lt;ExpressionPlan&gt;,
     },
+    /// Functions with a set of arguments.
     Function {
         op: String,
         args: Vec&lt;ExpressionPlan&gt;,
     },
+    /// All fields(*) in a schema.
     Wildcard,
 }
 </code></pre>
 <hr />
-<h2 id="executors">executors:</h2>
+<h2 id="interpreters">interpreters:</h2>
 <p>由于查询计划可能需要优化，而其他执行计划可能不需要，因此需要这样一层。</p>
 <ul>
-<li>ExecutorFactory: 将PlanNode转换为IExecutor。对于SelectExecutor来说，会首先调用Optimizer::create().optimize得到优化后的PlanNode。然后调用PipelineBuilder执行计划。</li>
+<li>InterpreterFactory: 将PlanNode转换为IInterpreter。对于SelectInterpreter来说，会首先调用Optimizer::create().optimize得到优化后的PlanNode。然后调用PipelineBuilder执行计划。</li>
 </ul>
+<pre><code class="language-rust">#[async_trait]
+pub trait IInterpreter: Sync + Send {
+    fn name(&amp;self) -&gt; &amp;str;
+    async fn execute(&amp;self) -&gt; FuseQueryResult&lt;SendableDataBlockStream&gt;;
+}
+</code></pre>
 <hr />
 <h2 id="optimizers">Optimizers:</h2>
 <p>主要用于对逻辑查询计划的优化。</p>
 <ul>
-<li>Optimizer: 调用create添加需要应用的优化规则。再调用optimize按顺序优化查询计划。目前实现的filter_push_down只完成了projection算子中的别名表达式替换。</li>
+<li>Optimizer: 调用create添加需要应用的优化规则。再调用optimize按顺序优化查询计划。目前实现的filter_push_down只完成了filter算子中的别名表达式替换。</li>
 </ul>
 <pre><code class="language-rust">pub trait IOptimizer {
     fn name(&amp;self) -&gt; &amp;str;
@@ -427,7 +505,9 @@ pub struct Optimizer {
 <h2 id="processors">processors:</h2>
 <p>主要用于构建进程之间的执行顺序。</p>
 <ul>
-<li>对于ReadSource的PlanNode, 会将输入进行分区，对于每个分区产生一个物理执行计划，之后可能会依次进行filter, projection, aggregate和limit。其中aggregate和Limit时pipeline breaker，通过调用merge_processor来进行等待之前所有进程的完成。</li>
+<li>对于ReadSource的PlanNode, 会将输入进行分区，对于每个分区产生一个物理执行计划。</li>
+<li>对于stage的PlanNode，会重构之前的Pipeline。如果当前文件读取的分区数小于等于当前节点的cpu核数量，则只在当前单节点上运行。否则每个节点处理ceil(partitions.len()  / cluster_nums) + 1个分区（一个chunk）。之后对每个chunk产生一个叫RemoteTransform的物理查询计划，加入到pipeline中。</li>
+<li>对于pipeline breaker的算子需要调用merge_processor等待某个节点前所有进程的完成。</li>
 </ul>
 <pre><code class="language-rust">#[async_trait]
 pub trait IProcessor: Sync + Send {
@@ -437,37 +517,20 @@ pub trait IProcessor: Sync + Send {
     /// Connect to the input processor, add an edge on the DAG.
     fn connect_to(&amp;mut self, input: Arc&lt;dyn IProcessor&gt;) -&gt; FuseQueryResult&lt;()&gt;;
 
+    /// Inputs.
+    fn inputs(&amp;self) -&gt; Vec&lt;Arc&lt;dyn IProcessor&gt;&gt;;
+
+    /// Reference used for downcast.
+    fn as_any(&amp;self) -&gt; &amp;dyn Any;
+
     /// Execute the processor.
     async fn execute(&amp;self) -&gt; FuseQueryResult&lt;SendableDataBlockStream&gt;;
-
-    /// Format the processor.
-    fn format(
-        &amp;self,
-        f: &amp;mut std::fmt::Formatter,
-        setting: &amp;mut FormatterSettings,
-    ) -&gt; std::fmt::Result {
-        if setting.indent &gt; 0 {
-            writeln!(f)?;
-            for _ in 0..setting.indent {
-                write!(f, &quot;{}&quot;, setting.indent_char)?;
-            }
-        }
-        write!(
-            f,
-            &quot;{} {} × {} {}&quot;,
-            setting.prefix,
-            self.name(),
-            setting.ways,
-            if setting.ways == 1 {
-                &quot;processor&quot;
-            } else {
-                &quot;processors&quot;
-            },
-        )
-    }
 }
 
-pub type Pipe = Vec&lt;Arc&lt;dyn IProcessor&gt;&gt;;
+pub struct Pipeline {
+    pipes: Vec&lt;Pipe&gt;,
+}
+
 
 pub struct Pipeline {
     processors: Vec&lt;Pipe&gt;,
@@ -480,11 +543,26 @@ pub struct Pipeline {
 <ul>
 <li>FunctionFactory: 通过get方法产生算数，比较，逻辑，聚合以及UDF Function</li>
 </ul>
+<pre><code class="language-rust">pub trait IFunction: fmt::Display + Sync + Send + DynClone {
+    fn return_type(&amp;self, input_schema: &amp;DataSchema) -&gt; FuseQueryResult&lt;DataType&gt;;
+    fn nullable(&amp;self, input_schema: &amp;DataSchema) -&gt; FuseQueryResult&lt;bool&gt;;
+    fn eval(&amp;self, block: &amp;DataBlock) -&gt; FuseQueryResult&lt;DataColumnarValue&gt;;
+    fn set_depth(&amp;mut self, depth: usize);
+    fn accumulate(&amp;mut self, block: &amp;DataBlock) -&gt; FuseQueryResult&lt;()&gt;;
+    fn accumulate_result(&amp;self) -&gt; FuseQueryResult&lt;Vec&lt;DataValue&gt;&gt;;
+    fn merge(&amp;mut self, states: &amp;[DataValue]) -&gt; FuseQueryResult&lt;()&gt;;
+    fn merge_result(&amp;self) -&gt; FuseQueryResult&lt;DataValue&gt;;
+    fn is_aggregator(&amp;self) -&gt; bool {
+        false
+    }
+}
+</code></pre>
 <hr />
 <h2 id="transforms">transforms:</h2>
 <p>主要用于实现对每个DataBlock的物理查询计划执行。</p>
 <ul>
 <li>source: 调用table.read进行分区的读取。</li>
+<li>remote: 通过rpc调用其他节点执行。</li>
 <li>每个进程通过transforms实现executor方法，transforms会将表达式转换为functions，并实现expression_executor方法(对每个datablock执行functions的eval操作并生成新的DataBlock）。然后将functions和expression_executor方法传给datastream进行执行。</li>
 </ul>
 <hr />
