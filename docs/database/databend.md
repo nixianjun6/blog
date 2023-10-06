@@ -11,7 +11,7 @@
 - DataField为arrow::datatypes::Field
 - DataArray: 向量。DataArrayRef为arrow::array::ArrayRef。
 - DataValue: 标量。 能与DataArray, rust标准类型，DataType相互转换。实现了算术运算与聚合运算。
-- DataColumnarValue:实现了And与Or的逻辑运算，比较运算，算术运算，聚合运算。（如果操作对象是标量则转换为向量）
+- DataColumnarValue:实现了二元的And与Or的逻辑运算，比较运算，算术运算，聚合运算，merge sort。（如果操作对象是标量则转换为向量）
 
 ```rust
 #[derive(Clone, Debug)]
@@ -28,7 +28,7 @@ pub enum DataColumnarValue {
 对多行列向量进行抽象。
 
 - 能与arrow::record_batch::RecordBatch相互转换。
-- 通过block_take_by_indices方法按行取索引值
+- 通过block_take_by_indices方法按行取索引值, 通过concat_blocks进行拼接操作，sort_block对单个block进行排序，merge_sort_block对两个已排序blocks进行merge，merge_sort_blocks递归对多个排序blocks merge。
 
 ```rust
 #[derive(Debug, Clone)]
@@ -40,7 +40,12 @@ pub struct DataBlock {
 
 ### planners:
 
-主要用于生成逻辑查询计划。(之前的partition和statistics也移到这里来了)
+主要用于生成逻辑查询计划。
+
+- plan partition: 对查询计划进行分区。
+- plan statistics: 查询计划统计量
+- plan_rewriter: 对表达式中的别名进行重写
+- plan walker: 查询计划遍历
 
 ```rust
 #[derive(Clone)]
@@ -51,12 +56,14 @@ pub enum PlanNode {
     AggregatorPartial(AggregatorPartialPlan),
     AggregatorFinal(AggregatorFinalPlan),
     Filter(FilterPlan),
+    Sort(SortPlan),
     Limit(LimitPlan),
     Scan(ScanPlan),
     ReadSource(ReadDataSourcePlan),
-    Explain(ExplainPlan),
     Select(SelectPlan),
-    Create(CreatePlan),
+    Explain(ExplainPlan),
+    CreateTable(CreateTablePlan),
+    CreateDatabase(CreateDatabasePlan),
     SetVariable(SettingPlan),
 }
 
@@ -78,6 +85,15 @@ pub enum ExpressionPlan {
     Function {
         op: String,
         args: Vec<ExpressionPlan>,
+    },
+    /// A sort expression, that can be used to sort values.
+    Sort {
+        /// The expression to sort on
+        expr: Box<ExpressionPlan>,
+        /// The direction of the sort
+        asc: bool,
+        /// Whether to put Nulls before all other data values
+        nulls_first: bool,
     },
     /// All fields(*) in a schema.
     Wildcard,
@@ -178,6 +194,29 @@ pub struct MemEngine {
 ```rust
 pub struct ActionHandler {
     meta: Arc<Mutex<MemEngine>>,
+}
+```
+
+### fs:
+
+​	存储层提供调用的API。提供读写文件以及展示路径下文件的功能。
+
+```rust
+#[async_trait]
+pub trait IFileSystem {
+    /// Add file atomically.
+    /// AKA put_if_absent
+    async fn add<'a>(
+        &'a self,
+        path: impl AsRef<Path> + Send + 'a,
+        data: &[u8],
+    ) -> anyhow::Result<()>;
+
+    /// read all bytes from a file
+    async fn read_all<'a>(&'a self, path: impl AsRef<Path> + Send + 'a) -> anyhow::Result<Vec<u8>>;
+
+    /// List dir and returns directories and files.
+    async fn list<'a>(&'a self, path: impl AsRef<Path> + Send + 'a) -> anyhow::Result<ListResult>;
 }
 ```
 
@@ -415,7 +454,7 @@ pub trait ITable: Sync + Send {
 
 ### sql:
 
-- PlanParse: 从原来的planners中解耦出来。build_from_sql首先将sql语句转换为DFStatements(通过DFParser实现)。对于Statement::Query，按having -> from-> filter-> projection -> aggr -> limit生成计划(主要通过PlanBuilder生成PlanNode)
+- PlanParse: 从原来的planners中解耦出来。build_from_sql首先将sql语句转换为DFStatements(通过DFParser实现)。对于Statement::Query，按having -> from-> filter-> projection -> (aggr) -> sort ->  limit生成计划(主要通过PlanBuilder生成PlanNode)
 - 在处理from时，会进一步调用table.read_plan生成ReadSource的PlanNode)。
 - 在生成projection计划时，会先调用planRewrite来重写别名。
 - 在生成aggr计划时，会生成aggregate_partial, stage(类似于mapreduce中的shuffle), aggregate_final三个计划。
@@ -479,6 +518,7 @@ pub struct Optimizer {
 
 - 对于ReadSource的PlanNode, 会将输入进行分区，对于每个分区产生一个物理执行计划。
 - 对于stage的PlanNode，会重构之前的Pipeline。按照planner中的调度方案产生RemoteTransform的物理查询计划，加入到pipeline中。
+- 对于Sort的PlanNode,会产生SortPartialTransform对单个block进行排序，之后产生SortMergeTransform将blocks进行merge，最后调用merge_processor。
 - 对于pipeline breaker的算子需要调用merge_processor等待某个节点前所有进程的完成。
 
 ```rust
