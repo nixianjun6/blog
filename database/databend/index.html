@@ -273,7 +273,7 @@
 <li>DataField为arrow::datatypes::Field</li>
 <li>DataArray: 向量。DataArrayRef为arrow::array::ArrayRef。</li>
 <li>DataValue: 标量。 能与DataArray, rust标准类型，DataType相互转换。实现了算术运算与聚合运算。</li>
-<li>DataColumnarValue:实现了And与Or的逻辑运算，比较运算，算术运算，聚合运算。（如果操作对象是标量则转换为向量）</li>
+<li>DataColumnarValue:实现了二元的And与Or的逻辑运算，比较运算，算术运算，聚合运算，merge sort。（如果操作对象是标量则转换为向量）</li>
 </ul>
 <pre><code class="language-rust">#[derive(Clone, Debug)]
 pub enum DataColumnarValue {
@@ -287,7 +287,7 @@ pub enum DataColumnarValue {
 <p>对多行列向量进行抽象。</p>
 <ul>
 <li>能与arrow::record_batch::RecordBatch相互转换。</li>
-<li>通过block_take_by_indices方法按行取索引值</li>
+<li>通过block_take_by_indices方法按行取索引值, 通过concat_blocks进行拼接操作，sort_block对单个block进行排序，merge_sort_block对两个已排序blocks进行merge，merge_sort_blocks递归对多个排序blocks merge。</li>
 </ul>
 <pre><code class="language-rust">#[derive(Debug, Clone)]
 pub struct DataBlock {
@@ -296,7 +296,13 @@ pub struct DataBlock {
 }
 </code></pre>
 <h3 id="planners">planners:</h3>
-<p>主要用于生成逻辑查询计划。(之前的partition和statistics也移到这里来了)</p>
+<p>主要用于生成逻辑查询计划。</p>
+<ul>
+<li>plan partition: 对查询计划进行分区。</li>
+<li>plan statistics: 查询计划统计量</li>
+<li>plan_rewriter: 对表达式中的别名进行重写</li>
+<li>plan walker: 查询计划遍历</li>
+</ul>
 <pre><code class="language-rust">#[derive(Clone)]
 pub enum PlanNode {
     Empty(EmptyPlan),
@@ -305,12 +311,14 @@ pub enum PlanNode {
     AggregatorPartial(AggregatorPartialPlan),
     AggregatorFinal(AggregatorFinalPlan),
     Filter(FilterPlan),
+    Sort(SortPlan),
     Limit(LimitPlan),
     Scan(ScanPlan),
     ReadSource(ReadDataSourcePlan),
-    Explain(ExplainPlan),
     Select(SelectPlan),
-    Create(CreatePlan),
+    Explain(ExplainPlan),
+    CreateTable(CreateTablePlan),
+    CreateDatabase(CreateDatabasePlan),
     SetVariable(SettingPlan),
 }
 
@@ -332,6 +340,15 @@ pub enum ExpressionPlan {
     Function {
         op: String,
         args: Vec&lt;ExpressionPlan&gt;,
+    },
+    /// A sort expression, that can be used to sort values.
+    Sort {
+        /// The expression to sort on
+        expr: Box&lt;ExpressionPlan&gt;,
+        /// The direction of the sort
+        asc: bool,
+        /// Whether to put Nulls before all other data values
+        nulls_first: bool,
     },
     /// All fields(*) in a schema.
     Wildcard,
@@ -406,6 +423,25 @@ pub struct Config {
 <p>​   存储服务的执行器。目前支持的服务包括:CreateDatabase, CreateTable和GetTable。</p>
 <pre><code class="language-rust">pub struct ActionHandler {
     meta: Arc&lt;Mutex&lt;MemEngine&gt;&gt;,
+}
+</code></pre>
+<h3 id="fs">fs:</h3>
+<p>​   存储层提供调用的API。提供读写文件以及展示路径下文件的功能。</p>
+<pre><code class="language-rust">#[async_trait]
+pub trait IFileSystem {
+    /// Add file atomically.
+    /// AKA put_if_absent
+    async fn add&lt;'a&gt;(
+        &amp;'a self,
+        path: impl AsRef&lt;Path&gt; + Send + 'a,
+        data: &amp;[u8],
+    ) -&gt; anyhow::Result&lt;()&gt;;
+
+    /// read all bytes from a file
+    async fn read_all&lt;'a&gt;(&amp;'a self, path: impl AsRef&lt;Path&gt; + Send + 'a) -&gt; anyhow::Result&lt;Vec&lt;u8&gt;&gt;;
+
+    /// List dir and returns directories and files.
+    async fn list&lt;'a&gt;(&amp;'a self, path: impl AsRef&lt;Path&gt; + Send + 'a) -&gt; anyhow::Result&lt;ListResult&gt;;
 }
 </code></pre>
 <hr />
@@ -622,7 +658,7 @@ pub trait ITable: Sync + Send {
 </code></pre>
 <h3 id="sql">sql:</h3>
 <ul>
-<li>PlanParse: 从原来的planners中解耦出来。build_from_sql首先将sql语句转换为DFStatements(通过DFParser实现)。对于Statement::Query，按having -&gt; from-&gt; filter-&gt; projection -&gt; aggr -&gt; limit生成计划(主要通过PlanBuilder生成PlanNode)</li>
+<li>PlanParse: 从原来的planners中解耦出来。build_from_sql首先将sql语句转换为DFStatements(通过DFParser实现)。对于Statement::Query，按having -&gt; from-&gt; filter-&gt; projection -&gt; (aggr) -&gt; sort -&gt;  limit生成计划(主要通过PlanBuilder生成PlanNode)</li>
 <li>在处理from时，会进一步调用table.read_plan生成ReadSource的PlanNode)。</li>
 <li>在生成projection计划时，会先调用planRewrite来重写别名。</li>
 <li>在生成aggr计划时，会生成aggregate_partial, stage(类似于mapreduce中的shuffle), aggregate_final三个计划。</li>
@@ -674,6 +710,7 @@ pub struct Optimizer {
 <ul>
 <li>对于ReadSource的PlanNode, 会将输入进行分区，对于每个分区产生一个物理执行计划。</li>
 <li>对于stage的PlanNode，会重构之前的Pipeline。按照planner中的调度方案产生RemoteTransform的物理查询计划，加入到pipeline中。</li>
+<li>对于Sort的PlanNode,会产生SortPartialTransform对单个block进行排序，之后产生SortMergeTransform将blocks进行merge，最后调用merge_processor。</li>
 <li>对于pipeline breaker的算子需要调用merge_processor等待某个节点前所有进程的完成。</li>
 </ul>
 <pre><code class="language-rust">#[async_trait]
