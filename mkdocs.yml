@@ -4,16 +4,10 @@ nav:
 - Database:
   - cmu15445: 'database/cmu15445.md'
   - leveldb: 'database/leveldb.md'
-  - miniob: 'database/miniob.md'
   - cmu15721: 'database/cmu15721.md'
   - databend: 'database/databend.md'
 - Distributed System:
   - mit6.824: 'distributed system/mit6.824.md'
-- Algorithm:
-  - algorithm: 'algorithm/algorithm.md'
-- Language:
-  - C++: 'language/C++.md'
-  - Rust: 'language/rust.md'
 theme:
   name: 'dracula'
   logo: img/nixianjun.png

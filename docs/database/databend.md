@@ -126,7 +126,7 @@ pub trait IFunction: fmt::Display + Sync + Send + DynClone {
 
 ### streams:
 
-将数据流划分成数据块进行执行。
+数据块迭代异步执行。
 
 ```rust
 pub type SendableDataBlockStream = std::pin::Pin<
@@ -138,13 +138,17 @@ pub type SendableDataBlockStream = std::pin::Pin<
 
 ​	互斥锁和读写锁的封装
 
+runtime:
+
+​	tokio异步运行时
+
 ------
 
-## fusestore
+## metasrv
 
 ### api:
 
-​	实现了rpc的通信服务
+​	实现了rpc与http的通信服务
 
 ### configs:
 
@@ -220,9 +224,13 @@ pub trait IFileSystem {
 }
 ```
 
+### data_part:
+
+​	
+
 ------
 
-## fusequery
+## query
 
 ### api:
 
