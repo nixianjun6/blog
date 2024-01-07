@@ -99,14 +99,6 @@
     </li>
                             
     <li class="drac-box-ternary">
-        <a href="../miniob/"
-            class="
-            drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
-            miniob
-        </a>
-    </li>
-                            
-    <li class="drac-box-ternary">
         <a href="../cmu15721/"
             class="
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
@@ -139,54 +131,6 @@
             class="
             drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
             mit6.824
-        </a>
-    </li>
-                    </ul>
-                </div>
-            </li>
-            <li class="drac-box">
-                <a href="../.."
-                    class="
-                    drac-anchor btn-toggle d-inline-flex align-items-center border-0 drac-text-purple--hover collapsed"
-                    data-bs-toggle="collapse" data-bs-target="#algorithm-collapse" aria-expanded="false">
-                    Algorithm
-                </a>
-                <div class="collapse" id="algorithm-collapse">
-                    <ul class="mb-5 drac-list drac-list-none">
-                            
-    <li class="drac-box-ternary">
-        <a href="../../algorithm/algorithm/"
-            class="
-            drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
-            algorithm
-        </a>
-    </li>
-                    </ul>
-                </div>
-            </li>
-            <li class="drac-box">
-                <a href="../.."
-                    class="
-                    drac-anchor btn-toggle d-inline-flex align-items-center border-0 drac-text-purple--hover collapsed"
-                    data-bs-toggle="collapse" data-bs-target="#language-collapse" aria-expanded="false">
-                    Language
-                </a>
-                <div class="collapse" id="language-collapse">
-                    <ul class="mb-5 drac-list drac-list-none">
-                            
-    <li class="drac-box-ternary">
-        <a href="../../language/C%2B%2B/"
-            class="
-            drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
-            C++
-        </a>
-    </li>
-                            
-    <li class="drac-box-ternary">
-        <a href="../../language/rust/"
-            class="
-            drac-anchor d-inline-flex align-items-center border-0 drac-text-purple--hover">
-            Rust
         </a>
     </li>
                     </ul>
@@ -375,17 +319,19 @@ pub enum ExpressionPlan {
 }
 </code></pre>
 <h3 id="streams">streams:</h3>
-<p>将数据流划分成数据块进行执行。</p>
+<p>数据块迭代异步执行。</p>
 <pre><code class="language-rust">pub type SendableDataBlockStream = std::pin::Pin&lt;
     Box&lt;dyn futures::stream::Stream&lt;Item = FuseQueryResult&lt;DataBlock&gt;&gt; + Sync + Send&gt;,
 &gt;;
 </code></pre>
 <h3 id="infallible">infallible:</h3>
 <p>​   互斥锁和读写锁的封装</p>
+<p>runtime:</p>
+<p>​   tokio异步运行时</p>
 <hr />
-<h2 id="fusestore">fusestore</h2>
+<h2 id="metasrv">metasrv</h2>
 <h3 id="api">api:</h3>
-<p>​   实现了rpc的通信服务</p>
+<p>​   实现了rpc与http的通信服务</p>
 <h3 id="configs">configs:</h3>
 <p>主要用于加载选项设置。</p>
 <pre><code class="language-rust">#[derive(Debug, StructOpt, Clone)]
@@ -444,8 +390,10 @@ pub trait IFileSystem {
     async fn list&lt;'a&gt;(&amp;'a self, path: impl AsRef&lt;Path&gt; + Send + 'a) -&gt; anyhow::Result&lt;ListResult&gt;;
 }
 </code></pre>
+<h3 id="data_part">data_part:</h3>
+<p>​   </p>
 <hr />
-<h2 id="fusequery">fusequery</h2>
+<h2 id="query">query</h2>
 <h3 id="api_1">api:</h3>
 <p>​   实现了http与rpc的通信服务。</p>
 <h3 id="configs_1">configs:</h3>
